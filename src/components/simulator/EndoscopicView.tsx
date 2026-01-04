@@ -404,28 +404,36 @@ function CavernousSinusScene({
       </mesh>
       
       {/* CN VI (Abducens) - Yellow nerve inferior/lateral to ICA */}
-      {/* Left side */}
-      <mesh position={[-0.5, -0.5, 9.5]}>
+      {/* Left side - runs alongside C4 cavernous segment */}
+      <mesh position={[-0.9, -0.3, 9.0]}>
         <tubeGeometry args={[
           new THREE.LineCurve3(
-            new THREE.Vector3(0, -0.5, 0),
-            new THREE.Vector3(0, 0.5, 0)
+            new THREE.Vector3(0, -0.6, 0),
+            new THREE.Vector3(0.1, 0.6, 0.3)
           ),
-          10, 0.05, 6, false
+          12, 0.04, 6, false
         ]} />
-        <meshStandardMaterial color="#f2e85c" />
+        <meshStandardMaterial 
+          color="#f2e85c" 
+          emissive="#665500"
+          emissiveIntensity={0.2}
+        />
       </mesh>
       
       {/* Right side */}
-      <mesh position={[0.5, -0.5, 9.5]}>
+      <mesh position={[0.9, -0.3, 9.0]}>
         <tubeGeometry args={[
           new THREE.LineCurve3(
-            new THREE.Vector3(0, -0.5, 0),
-            new THREE.Vector3(0, 0.5, 0)
+            new THREE.Vector3(0, -0.6, 0),
+            new THREE.Vector3(-0.1, 0.6, 0.3)
           ),
-          10, 0.05, 6, false
+          12, 0.04, 6, false
         ]} />
-        <meshStandardMaterial color="#f2e85c" />
+        <meshStandardMaterial 
+          color="#f2e85c" 
+          emissive="#665500"
+          emissiveIntensity={0.2}
+        />
       </mesh>
     </group>
   );
