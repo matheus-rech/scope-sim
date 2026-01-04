@@ -55,6 +55,14 @@ export const inputRefs = {
   
   // Calibration state
   isCalibrated: false,
+  
+  // Doppler sweep mapping (circular buffer for performance)
+  // Each sample: [x, y, intensity] = 3 floats per sample, 200 samples max
+  dopplerSweep: {
+    samples: new Float32Array(600), // 200 samples x 3 (x, y, intensity)
+    writeIndex: 0,
+    count: 0,
+  },
 };
 
 /**
@@ -71,6 +79,26 @@ export function resetInputRefs(): void {
   inputRefs.collidingStructure = null;
   inputRefs.insertionDepth = 0;
   inputRefs.scopeAngle = 0;
+  
+  // Reset Doppler sweep buffer
+  inputRefs.dopplerSweep.samples.fill(0);
+  inputRefs.dopplerSweep.writeIndex = 0;
+  inputRefs.dopplerSweep.count = 0;
+}
+
+/**
+ * Add a Doppler sweep sample to the circular buffer
+ */
+export function addDopplerSample(x: number, y: number, intensity: number): void {
+  const { dopplerSweep } = inputRefs;
+  const i = dopplerSweep.writeIndex * 3;
+  
+  dopplerSweep.samples[i] = x;
+  dopplerSweep.samples[i + 1] = y;
+  dopplerSweep.samples[i + 2] = intensity;
+  
+  dopplerSweep.writeIndex = (dopplerSweep.writeIndex + 1) % 200;
+  dopplerSweep.count = Math.min(200, dopplerSweep.count + 1);
 }
 
 /**

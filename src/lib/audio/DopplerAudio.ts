@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { getICAMetrics, ICAMetrics } from '@/lib/anatomy/ICAGeometry';
+import { hapticEngine, distanceToDangerLevel } from '@/lib/haptic/HapticFeedback';
 
 /**
  * SURGICAL-GRADE PROCEDURAL AUDIO ENGINE
@@ -70,6 +71,10 @@ export class DopplerAudio {
     const time = this.ctx?.currentTime ?? Date.now() / 1000;
     const metrics = getICAMetrics(toolPos, time);
     this.lastMetrics = metrics;
+
+    // Update haptic feedback based on ICA proximity
+    const dangerLevel = distanceToDangerLevel(metrics.distance);
+    hapticEngine.updateDangerLevel(dangerLevel);
 
     if (metrics.signal < 0.02) {
       this.silence();
@@ -152,6 +157,9 @@ export class DopplerAudio {
       const t = this.ctx.currentTime;
       this.gain.gain.setTargetAtTime(0, t, 0.1);
     }
+
+    // Stop haptic feedback when Doppler is silenced
+    hapticEngine.stop();
 
     // Don't destroy oscillator immediately - let it fade
     // We'll reuse it for next activation

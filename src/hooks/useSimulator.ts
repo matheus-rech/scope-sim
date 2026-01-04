@@ -22,8 +22,9 @@ import { EndoscopePhysics } from '@/lib/physics/EndoscopePhysics';
 import { ANATOMICAL_STRUCTURES, getDopplerSignal } from '@/data/anatomicalStructures';
 import { evaluateSurgicalRules, ruleToMessage, determineSurgicalStep } from '@/lib/surgical/SurgicalRuleEngine';
 import { useGameStore } from '@/store/gameStore';
-import { inputRefs, resetInputRefs, getWallGridIndex, reduceWallIntegrity, getWallResectedCount } from '@/store/inputRefs';
+import { inputRefs, resetInputRefs, getWallGridIndex, reduceWallIntegrity, getWallResectedCount, addDopplerSample } from '@/store/inputRefs';
 import { dopplerAudio } from '@/lib/audio/DopplerAudio';
+import { hapticEngine } from '@/lib/haptic/HapticFeedback';
 import * as THREE from 'three';
 
 const initialDopplerState: DopplerState = {
@@ -128,6 +129,11 @@ export function useSimulator(): UseSimulatorReturn {
   // Initialize physics with anatomical structures
   useEffect(() => {
     physicsRef.current.setAnatomicalStructures(ANATOMICAL_STRUCTURES);
+    
+    // Cleanup haptic feedback on unmount
+    return () => {
+      hapticEngine.stop();
+    };
   }, []);
 
   // Timer for elapsed time
@@ -316,6 +322,15 @@ export function useSimulator(): UseSimulatorReturn {
           endoscopeState.tipPosition.z
         );
         const metrics = dopplerAudio.updateDoppler(toolPos, pinchStrength > 0.5);
+        
+        // Add sample to Doppler sweep buffer for ICA mapping overlay
+        if (pinchStrength > 0.5) {
+          addDopplerSample(
+            endoscopeState.tipPosition.x,
+            endoscopeState.tipPosition.y,
+            metrics.rawIntensity
+          );
+        }
         
         return {
           isActive: true,
