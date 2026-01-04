@@ -11,6 +11,8 @@ import ToolSelector from '@/components/simulator/ToolSelector';
 import DopplerFeedback from '@/components/simulator/DopplerFeedback';
 import PostOpReport from '@/components/simulator/PostOpReport';
 import ScenarioSelection from '@/components/simulator/ScenarioSelection';
+import ICAMappingOverlay from '@/components/simulator/ICAMappingOverlay';
+import { distanceToDangerLevel } from '@/lib/haptic/HapticFeedback';
 import { Button } from '@/components/ui/button';
 import { MedicalCard, MedicalCardIcon } from '@/components/ui/medical-card';
 import { LevelId, AttendingMessage, TumorScenario } from '@/types/simulator';
@@ -492,7 +494,7 @@ export default function Simulator() {
         </header>
 
         {/* Endoscopic View */}
-        <main className="flex-1 p-4 flex items-center justify-center min-h-0">
+        <main className="flex-1 p-4 flex items-center justify-center min-h-0 relative">
           <div className="w-full max-w-3xl aspect-square">
             <EndoscopicView
               endoscopeState={simulator.gameState.endoscope}
@@ -504,6 +506,18 @@ export default function Simulator() {
               isToolActive={simulator.gameState.tool.isActive}
             />
           </div>
+          
+          {/* ICA Mapping Overlay - appears when Doppler is active */}
+          {simulator.gameState.tool.activeTool === 'doppler' && (
+            <div className="absolute bottom-8 left-8">
+              <ICAMappingOverlay
+                isActive={simulator.gameState.tool.isActive}
+                probePosition={simulator.gameState.endoscope.tipPosition}
+                signalIntensity={simulator.gameState.tool.dopplerState.signalStrength}
+                dangerLevel={distanceToDangerLevel(simulator.gameState.tool.dopplerState.nearestICADistance)}
+              />
+            </div>
+          )}
         </main>
 
         {/* Bottom Bar - Tools and Doppler */}
