@@ -1,4 +1,4 @@
-import { LevelState, LevelObjective } from '@/types/simulator';
+import { LevelState, LevelObjective, TumorScenario, KNOSP_GRADES } from '@/types/simulator';
 import { cn } from '@/lib/utils';
 
 interface LevelInfoPanelProps {
@@ -84,9 +84,36 @@ export default function LevelInfoPanel({ levelState, timeElapsed }: LevelInfoPan
   const completedCount = levelState.objectives.filter(o => o.isCompleted).length;
   const totalCount = levelState.objectives.length;
   const progressPercent = (completedCount / totalCount) * 100;
+  const scenario = levelState.scenario;
 
   return (
     <div className="bg-card rounded-lg border border-border overflow-hidden">
+      {/* Scenario Badge (if active) */}
+      {scenario && (
+        <div className="px-4 py-2 bg-primary/10 border-b border-border flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className={cn(
+              'px-2 py-0.5 rounded text-xs font-semibold',
+              scenario.type === 'functioning' 
+                ? 'bg-amber-500/20 text-amber-400' 
+                : 'bg-blue-500/20 text-blue-400'
+            )}>
+              {scenario.type === 'functioning' ? 'FA' : 'NFA'}
+              {scenario.subtype && ` - ${scenario.subtype}`}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Knosp {scenario.knospGrade}
+            </span>
+          </div>
+          <span className={cn(
+            'text-xs font-medium',
+            scenario.goal === 'biochemical_cure' ? 'text-amber-400' : 'text-blue-400'
+          )}>
+            {scenario.goal === 'biochemical_cure' ? 'Cure' : 'Decompress'}
+          </span>
+        </div>
+      )}
+
       {/* Level Header */}
       <div className="px-4 py-3 bg-secondary/50 border-b border-border">
         <div className="flex items-center justify-between">
