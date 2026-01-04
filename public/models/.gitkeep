@@ -1,0 +1,17 @@
+# Blender GLB assets go here
+# 
+# Required assets for Phase 2 high-fidelity visuals:
+#   - ICA_left.glb       : Left internal carotid artery (UV unwrapped)
+#   - ICA_right.glb      : Right internal carotid artery (UV unwrapped)
+#   - MedialWall.glb     : Medial wall dura (MUST be UV unwrapped for shader resection)
+#   - Tumor.glb          : Pituitary adenoma mass
+#   - SellarDura.glb     : Background sellar floor
+#
+# Export requirements:
+#   - Format: GLTF Binary (.glb)
+#   - Scale: 1 unit = 1 cm
+#   - UV Unwrap: Critical for MedialWall (10x10 grid mapping)
+#   - Origin: Align to ICAGeometry.ts coordinate system
+#
+# The simulator will automatically detect and use these assets when present,
+# falling back to procedural geometry when assets are not found.
