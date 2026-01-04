@@ -18,6 +18,7 @@ import { RecordingsList } from '@/components/simulator/RecordingsList';
 import { ReplayView } from '@/components/simulator/ReplayView';
 import { OrientationLanding } from '@/components/orientation/OrientationLanding';
 import { ChapterPlayer } from '@/components/orientation/ChapterPlayer';
+import { GuidedWalkthrough } from '@/components/orientation/GuidedWalkthrough';
 import { distanceToDangerLevel } from '@/lib/haptic/HapticFeedback';
 import { Button } from '@/components/ui/button';
 import { MedicalCard, MedicalCardIcon } from '@/components/ui/medical-card';
@@ -63,6 +64,7 @@ export default function Simulator() {
   // Orientation state
   const [showOrientation, setShowOrientation] = useState(false);
   const [orientationChapterId, setOrientationChapterId] = useState<string | null>(null);
+  const [showGuidedWalkthrough, setShowGuidedWalkthrough] = useState(false);
   
   // Replay system state
   const [isReplayMode, setIsReplayMode] = useState(false);
@@ -290,6 +292,18 @@ export default function Simulator() {
     );
   }
 
+  // Guided Walkthrough (Full Procedure Video)
+  if (showGuidedWalkthrough) {
+    return (
+      <GuidedWalkthrough
+        onExit={() => {
+          setShowGuidedWalkthrough(false);
+          setShowOrientation(true);
+        }}
+      />
+    );
+  }
+
   // Orientation Chapter Player
   if (orientationChapterId) {
     return (
@@ -317,6 +331,10 @@ export default function Simulator() {
         }}
         onSkip={() => {
           setShowOrientation(false);
+        }}
+        onStartWalkthrough={() => {
+          setShowOrientation(false);
+          setShowGuidedWalkthrough(true);
         }}
       />
     );

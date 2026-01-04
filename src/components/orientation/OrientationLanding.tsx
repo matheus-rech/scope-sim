@@ -2,19 +2,20 @@ import { useState, useEffect } from 'react';
 import { DEMO_CHAPTERS } from '@/lib/orientation/DemoChapters';
 import { OrientationProgress } from '@/lib/orientation/types';
 import { ChapterCard } from './ChapterCard';
-import { MedicalCard } from '@/components/ui/medical-card';
+import { MedicalCard, MedicalCardIcon } from '@/components/ui/medical-card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { GraduationCap, ArrowRight, SkipForward } from 'lucide-react';
+import { GraduationCap, ArrowRight, SkipForward, PlayCircle, Video } from 'lucide-react';
 
 const STORAGE_KEY = 'neuroendosim-orientation-progress';
 
 interface OrientationLandingProps {
   onSelectChapter: (chapterId: string) => void;
   onSkip: () => void;
+  onStartWalkthrough: () => void;
 }
 
-export function OrientationLanding({ onSelectChapter, onSkip }: OrientationLandingProps) {
+export function OrientationLanding({ onSelectChapter, onSkip, onStartWalkthrough }: OrientationLandingProps) {
   const [progress, setProgress] = useState<OrientationProgress>({ chapters: [] });
 
   useEffect(() => {
@@ -81,8 +82,40 @@ export function OrientationLanding({ onSelectChapter, onSkip }: OrientationLandi
           <Progress value={progressPercent} className="h-2" />
         </MedicalCard>
 
+        {/* Featured: Full Procedure Walkthrough */}
+        <MedicalCard 
+          variant="elevated" 
+          gradient 
+          className="p-5 cursor-pointer hover:shadow-glow-sm transition-all group"
+          onClick={onStartWalkthrough}
+        >
+          <div className="flex items-start gap-4">
+            <MedicalCardIcon className="bg-success/20 group-hover:bg-success/30 transition-colors w-12 h-12">
+              <Video className="w-6 h-6 text-success" />
+            </MedicalCardIcon>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-lg font-bold text-foreground">Full Procedure Walkthrough</h3>
+                <span className="px-2 py-0.5 rounded-full bg-success/20 text-success text-xs font-medium">
+                  Recommended
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground mb-3">
+                Watch the attending surgeon perform a complete pituitary adenoma resection with step-by-step AI narration explaining each technique, tool, and critical decision.
+              </p>
+              <Button size="sm" className="group-hover:scale-105 transition-transform">
+                <PlayCircle className="w-4 h-4 mr-2" />
+                Start Guided Walkthrough
+              </Button>
+            </div>
+          </div>
+        </MedicalCard>
+
         {/* Chapter List */}
         <div className="space-y-3">
+          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+            Individual Training Modules
+          </h3>
           {DEMO_CHAPTERS.map((chapter, index) => (
             <ChapterCard
               key={chapter.id}
