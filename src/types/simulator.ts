@@ -155,7 +155,7 @@ export interface DopplerState {
 }
 
 // Surgical workflow steps
-export type SurgicalStep = 'APPROACH' | 'DOPPLER' | 'INCISION' | 'RESECTION' | 'CLOSURE';
+export type SurgicalStep = 'APPROACH' | 'DOPPLER' | 'INCISION' | 'RESECTION' | 'HEMOSTASIS' | 'CLOSURE';
 
 // Wall interaction zone for precise tracking
 export interface WallInteractionZone {

@@ -7,6 +7,14 @@ import {
   AnatomicalStructure,
   DEFAULT_CONFIG,
 } from '@/types/simulator';
+import { inputRefs } from '@/store/inputRefs';
+
+// Dual pivot points for binasal approach (nostrils)
+export const PIVOT_LEFT: Vector3D = { x: -0.8, y: -2.5, z: 5.0 };
+export const PIVOT_RIGHT: Vector3D = { x: 0.8, y: -2.5, z: 5.0 };
+
+// Leverage ratio for fulcrum effect
+const LEVERAGE_RATIO = 3.0;
 
 // Vector math utilities
 export const vec3 = {
@@ -53,6 +61,12 @@ export const vec3 = {
     x: Math.max(min.x, Math.min(max.x, v.x)),
     y: Math.max(min.y, Math.min(max.y, v.y)),
     z: Math.max(min.z, Math.min(max.z, v.z)),
+  }),
+
+  negate: (v: Vector3D): Vector3D => ({
+    x: -v.x,
+    y: -v.y,
+    z: -v.z,
   }),
 };
 
@@ -205,6 +219,7 @@ export class EndoscopePhysics {
 
   /**
    * Main update function - called each frame with hand position
+   * Reads from inputRefs for 60 FPS performance
    */
   update(
     handlePosition: Vector3D,
@@ -247,7 +262,100 @@ export class EndoscopePhysics {
       collidingStructure: collision.structure?.name || null,
     };
 
+    // Also update inputRefs for other systems to read
+    inputRefs.scopePosition = tipPos;
+    inputRefs.insertionDepth = insertionDepth;
+    inputRefs.scopeAngle = scopeAngle;
+    inputRefs.isColliding = collision.isColliding;
+    inputRefs.collidingStructure = collision.structure?.name || null;
+
     return this.currentState;
+  }
+
+  /**
+   * Update using dual-pivot mechanics (for binasal approach)
+   * Left hand controls scope through left nostril
+   */
+  updateFromInputRefs(): EndoscopeState {
+    const lh = inputRefs.leftHand;
+    
+    // Map normalized input (0-1) to physical space (cm)
+    const rawPos: Vector3D = {
+      x: lh.x * 12,
+      y: lh.y * 12,
+      z: lh.z * 25,
+    };
+    
+    // Calculate vector from pivot point
+    const offset = vec3.subtract(rawPos, PIVOT_LEFT);
+    
+    // Apply leverage amplification (inverted - fulcrum effect)
+    const amplifiedOffset = vec3.scale(vec3.negate(offset), LEVERAGE_RATIO);
+    
+    // Tip position is on opposite side of pivot
+    let tipPos = vec3.add(PIVOT_LEFT, amplifiedOffset);
+    
+    // Smooth position
+    tipPos = this.smoothPosition(tipPos);
+    
+    // Clamp to corridor
+    if (!this.isWithinCorridor(tipPos)) {
+      tipPos = this.clampToCorridor(tipPos);
+    }
+    
+    // Check collisions
+    const collision = this.checkCollision(tipPos);
+    if (collision.isColliding && collision.structure) {
+      tipPos = vec3.add(
+        tipPos,
+        vec3.scale(collision.normalVector, collision.penetrationDepth)
+      );
+    }
+    
+    const insertionDepth = this.calculateInsertionDepth(tipPos);
+    const scopeAngle = this.calculateScopeAngle(lh.rot);
+    
+    this.currentState = {
+      tipPosition: tipPos,
+      handlePosition: rawPos,
+      insertionDepth,
+      currentAngle: scopeAngle,
+      rotation: lh.rot,
+      isColliding: collision.isColliding,
+      collidingStructure: collision.structure?.name || null,
+    };
+    
+    // Update inputRefs
+    inputRefs.scopePosition = tipPos;
+    inputRefs.insertionDepth = insertionDepth;
+    inputRefs.scopeAngle = scopeAngle;
+    inputRefs.isColliding = collision.isColliding;
+    inputRefs.collidingStructure = collision.structure?.name || null;
+    
+    return this.currentState;
+  }
+
+  /**
+   * Calculate tool position from right hand input (for dual-hand procedures)
+   */
+  updateToolFromInputRefs(): Vector3D {
+    const rh = inputRefs.rightHand;
+    
+    // Map normalized input to physical space
+    const rawPos: Vector3D = {
+      x: rh.x * 12,
+      y: rh.y * 12,
+      z: rh.z * 25,
+    };
+    
+    // Calculate vector from right pivot
+    const offset = vec3.subtract(rawPos, PIVOT_RIGHT);
+    const amplifiedOffset = vec3.scale(vec3.negate(offset), LEVERAGE_RATIO);
+    const toolPos = vec3.add(PIVOT_RIGHT, amplifiedOffset);
+    
+    inputRefs.toolPosition = toolPos;
+    
+    return toolPos;
   }
 
   getState(): EndoscopeState {

@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { HandLandmarks, GestureType } from '@/types/simulator';
 import { handMapper, RawHandData } from '@/lib/tracking/HandMapper';
+import { inputRefs } from '@/store/inputRefs';
 
 interface HandTrackingState {
   isLoading: boolean;
@@ -92,6 +93,26 @@ export function useHandTracking(): UseHandTrackingReturn {
       const secondaryGesture = secondary 
         ? handMapper.detectGesture(secondary.landmarks) 
         : 'unknown';
+
+      // === WRITE DIRECTLY TO INPUT REFS FOR 60 FPS PHYSICS ===
+      // Left hand (dominant) controls scope
+      inputRefs.leftHand.x = dominantMapped.wrist.x;
+      inputRefs.leftHand.y = dominantMapped.wrist.y;
+      inputRefs.leftHand.z = dominantMapped.wrist.z;
+      inputRefs.leftHand.rot = wristRotation;
+      
+      // Right hand (secondary) controls tool
+      if (secondaryMapped) {
+        inputRefs.rightHand.x = secondaryMapped.wrist.x;
+        inputRefs.rightHand.y = secondaryMapped.wrist.y;
+        inputRefs.rightHand.z = secondaryMapped.wrist.z;
+        inputRefs.rightHand.pinch = pinchStrength > 0.7;
+        inputRefs.rightHand.pinchStrength = pinchStrength;
+      } else {
+        // Single hand mode - use dominant hand for tool activation
+        inputRefs.rightHand.pinch = pinchStrength > 0.7;
+        inputRefs.rightHand.pinchStrength = pinchStrength;
+      }
 
       setState(prev => ({
         ...prev,
@@ -230,6 +251,7 @@ export function useHandTracking(): UseHandTrackingReturn {
     if (latestLandmarksRef.current) {
       handMapper.calibrate(latestLandmarksRef.current);
       setIsCalibrated(handMapper.isCalibrationComplete());
+      inputRefs.isCalibrated = handMapper.isCalibrationComplete();
     }
   }, []);
 
