@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useHandTracking } from '@/hooks/useHandTracking';
 import { useSimulator } from '@/hooks/useSimulator';
+import { useAICoach } from '@/hooks/useAICoach';
 import EndoscopicView from '@/components/simulator/EndoscopicView';
 import HandTrackingPreview from '@/components/simulator/HandTrackingPreview';
 import VitalsMonitor from '@/components/simulator/VitalsMonitor';
@@ -9,14 +10,24 @@ import LevelInfoPanel from '@/components/simulator/LevelInfoPanel';
 import ToolSelector from '@/components/simulator/ToolSelector';
 import DopplerFeedback from '@/components/simulator/DopplerFeedback';
 import { Button } from '@/components/ui/button';
-import { LevelId } from '@/types/simulator';
+import { LevelId, AttendingMessage } from '@/types/simulator';
 import { cn } from '@/lib/utils';
 
 export default function Simulator() {
   const handTracking = useHandTracking();
   const simulator = useSimulator();
+  const aiCoach = useAICoach({ minInterval: 20000, enabled: true });
   const [isStarted, setIsStarted] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
+  const [aiMessages, setAiMessages] = useState<AttendingMessage[]>([]);
+  
+  // Track previous state for detecting changes
+  const prevStateRef = useRef({
+    tool: simulator.gameState.tool.activeTool,
+    isColliding: simulator.gameState.endoscope.isColliding,
+    complications: simulator.gameState.complications.length,
+    objectivesCompleted: simulator.gameState.levelState.objectives.filter(o => o.isCompleted).length,
+  });
 
   // Update simulator with hand tracking data
   useEffect(() => {
@@ -43,6 +54,64 @@ export default function Simulator() {
     simulator,
   ]);
 
+  // AI Coaching - triggered by state changes and periodically
+  useEffect(() => {
+    if (!isStarted || simulator.gameState.isPaused || simulator.gameState.isCalibrating) return;
+
+    const prev = prevStateRef.current;
+    const current = simulator.gameState;
+    
+    let trigger: 'periodic' | 'collision' | 'tool_change' | 'complication' | 'milestone' | 'doppler_warning' | null = null;
+
+    // Detect trigger conditions
+    if (current.tool.activeTool !== prev.tool) {
+      trigger = 'tool_change';
+    } else if (current.endoscope.isColliding && !prev.isColliding) {
+      trigger = 'collision';
+    } else if (current.complications.length > prev.complications) {
+      trigger = 'complication';
+    } else if (current.levelState.objectives.filter(o => o.isCompleted).length > prev.objectivesCompleted) {
+      trigger = 'milestone';
+    } else if (current.tool.dopplerState.nearestICADistance < 0.5 && current.tool.activeTool === 'doppler') {
+      trigger = 'doppler_warning';
+    }
+
+    // Update prev state
+    prevStateRef.current = {
+      tool: current.tool.activeTool,
+      isColliding: current.endoscope.isColliding,
+      complications: current.complications.length,
+      objectivesCompleted: current.levelState.objectives.filter(o => o.isCompleted).length,
+    };
+
+    if (trigger) {
+      aiCoach.requestCoaching(current, trigger).then(message => {
+        if (message) {
+          setAiMessages(prev => [...prev.slice(-9), message]); // Keep last 10 messages
+        }
+      });
+    }
+  }, [
+    isStarted,
+    simulator.gameState,
+    aiCoach,
+  ]);
+
+  // Periodic AI coaching check
+  useEffect(() => {
+    if (!isStarted || simulator.gameState.isPaused) return;
+
+    const interval = setInterval(() => {
+      aiCoach.requestCoaching(simulator.gameState, 'periodic').then(message => {
+        if (message) {
+          setAiMessages(prev => [...prev.slice(-9), message]);
+        }
+      });
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [isStarted, simulator.gameState.isPaused, aiCoach, simulator.gameState]);
+
   const handleStart = useCallback(async () => {
     await handTracking.startTracking();
     setShowInstructions(false);
@@ -54,11 +123,21 @@ export default function Simulator() {
     }
     simulator.completeCalibration();
     setIsStarted(true);
-  }, [handTracking, simulator]);
+    
+    // Request initial AI greeting
+    setTimeout(() => {
+      aiCoach.requestCoaching(simulator.gameState, 'milestone').then(message => {
+        if (message) {
+          setAiMessages([message]);
+        }
+      });
+    }, 1000);
+  }, [handTracking, simulator, aiCoach]);
 
   const handleLevelSelect = useCallback((level: LevelId) => {
     simulator.startLevel(level);
     setIsStarted(true);
+    setAiMessages([]); // Clear messages on level change
   }, [simulator]);
 
   // Instructions/Welcome Screen
@@ -321,8 +400,9 @@ export default function Simulator() {
         {/* Attending Coach - fills remaining space */}
         <div className="flex-1 min-h-0 p-3">
           <AttendingCoach
-            messages={simulator.gameState.attendingMessages}
+            messages={[...simulator.gameState.attendingMessages, ...aiMessages]}
             currentLevel={simulator.gameState.currentLevel}
+            isAILoading={aiCoach.isLoading}
           />
         </div>
       </aside>

@@ -1,13 +1,15 @@
 import { AttendingMessage } from '@/types/simulator';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef } from 'react';
+import { Loader2 } from 'lucide-react';
 
 interface AttendingCoachProps {
   messages: AttendingMessage[];
   currentLevel: number;
+  isAILoading?: boolean;
 }
 
-export default function AttendingCoach({ messages, currentLevel }: AttendingCoachProps) {
+export default function AttendingCoach({ messages, currentLevel, isAILoading }: AttendingCoachProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   
   // Auto-scroll to latest message
@@ -38,7 +40,7 @@ export default function AttendingCoach({ messages, currentLevel }: AttendingCoac
           <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
             <span className="text-sm">👨‍⚕️</span>
           </div>
-          <div>
+          <div className="flex-1">
             <h3 className="text-sm font-medium text-foreground">
               Dr. Chen
             </h3>
@@ -46,6 +48,9 @@ export default function AttendingCoach({ messages, currentLevel }: AttendingCoac
               Attending Surgeon
             </p>
           </div>
+          {isAILoading && (
+            <Loader2 className="w-4 h-4 text-primary animate-spin" />
+          )}
         </div>
       </div>
       

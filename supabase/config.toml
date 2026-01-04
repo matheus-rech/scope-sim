@@ -1,1 +1,4 @@
 project_id = "eicjbfzdmksrluqkjude"
+
+[functions.surgical-coach]
+verify_jwt = false
