@@ -16,6 +16,8 @@ import ICAMappingOverlay from '@/components/simulator/ICAMappingOverlay';
 import { ReplayControls } from '@/components/simulator/ReplayControls';
 import { RecordingsList } from '@/components/simulator/RecordingsList';
 import { ReplayView } from '@/components/simulator/ReplayView';
+import { OrientationLanding } from '@/components/orientation/OrientationLanding';
+import { ChapterPlayer } from '@/components/orientation/ChapterPlayer';
 import { distanceToDangerLevel } from '@/lib/haptic/HapticFeedback';
 import { Button } from '@/components/ui/button';
 import { MedicalCard, MedicalCardIcon } from '@/components/ui/medical-card';
@@ -35,7 +37,8 @@ import {
   Play,
   Camera,
   Film,
-  X
+  X,
+  GraduationCap
 } from 'lucide-react';
 
 const LEVEL_CONFIG: Record<number, { name: string }> = {
@@ -56,6 +59,10 @@ export default function Simulator() {
   const [showPostOpReport, setShowPostOpReport] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState<TumorScenario | null>(null);
   const [aiMessages, setAiMessages] = useState<AttendingMessage[]>([]);
+  
+  // Orientation state
+  const [showOrientation, setShowOrientation] = useState(false);
+  const [orientationChapterId, setOrientationChapterId] = useState<string | null>(null);
   
   // Replay system state
   const [isReplayMode, setIsReplayMode] = useState(false);
@@ -283,6 +290,38 @@ export default function Simulator() {
     );
   }
 
+  // Orientation Chapter Player
+  if (orientationChapterId) {
+    return (
+      <ChapterPlayer
+        chapterId={orientationChapterId}
+        onComplete={() => {
+          setOrientationChapterId(null);
+          setShowOrientation(true);
+        }}
+        onExit={() => {
+          setOrientationChapterId(null);
+          setShowOrientation(true);
+        }}
+      />
+    );
+  }
+
+  // Orientation Landing Screen
+  if (showOrientation) {
+    return (
+      <OrientationLanding
+        onSelectChapter={(chapterId) => {
+          setShowOrientation(false);
+          setOrientationChapterId(chapterId);
+        }}
+        onSkip={() => {
+          setShowOrientation(false);
+        }}
+      />
+    );
+  }
+
   // Instructions/Welcome Screen
   if (showInstructions) {
     return (
@@ -404,7 +443,7 @@ export default function Simulator() {
 
           {/* CTA */}
           <div className="text-center space-y-4">
-            <div className="flex gap-4 justify-center">
+            <div className="flex gap-4 justify-center flex-wrap">
               <Button
                 size="lg"
                 onClick={handleStart}
@@ -412,6 +451,15 @@ export default function Simulator() {
               >
                 <Play className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
                 Start Simulator
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => setShowOrientation(true)}
+                className="px-8 py-6 text-lg group border-accent/50 hover:border-accent hover:bg-accent/10"
+              >
+                <GraduationCap className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform text-accent" />
+                Resident Orientation
               </Button>
               {replaySystem.savedRecordings.length > 0 && (
                 <Button
