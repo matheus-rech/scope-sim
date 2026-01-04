@@ -12,8 +12,30 @@ import DopplerFeedback from '@/components/simulator/DopplerFeedback';
 import PostOpReport from '@/components/simulator/PostOpReport';
 import ScenarioSelection from '@/components/simulator/ScenarioSelection';
 import { Button } from '@/components/ui/button';
+import { MedicalCard, MedicalCardIcon } from '@/components/ui/medical-card';
 import { LevelId, AttendingMessage, TumorScenario } from '@/types/simulator';
 import { cn } from '@/lib/utils';
+import { 
+  Hand, 
+  Telescope, 
+  GripHorizontal, 
+  Stethoscope, 
+  Navigation,
+  Hammer,
+  Target,
+  Brain,
+  Wrench,
+  Play,
+  Camera
+} from 'lucide-react';
+
+const LEVEL_CONFIG: Record<number, { name: string }> = {
+  1: { name: 'Nasal Navigation' },
+  2: { name: 'Sphenoidotomy' },
+  3: { name: 'Sellar Exposure' },
+  4: { name: 'Tumor Resection' },
+  5: { name: 'Reconstruction' },
+};
 
 export default function Simulator() {
   const handTracking = useHandTracking();
@@ -200,84 +222,134 @@ export default function Simulator() {
   // Instructions/Welcome Screen
   if (showInstructions) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-8">
-        <div className="max-w-2xl w-full space-y-8">
+      <div className="min-h-screen bg-background flex items-center justify-center p-8 relative overflow-hidden">
+        {/* Animated background glow */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-glow-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-glow-pulse" style={{ animationDelay: '1s' }} />
+        </div>
+        
+        <div className="max-w-3xl w-full space-y-8 relative z-10">
+          {/* Header */}
           <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold text-foreground tracking-tight">
-              Endoscopic Surgery Simulator
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-4">
+              <Brain className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-primary">Surgical Training Simulator</span>
+            </div>
+            <h1 className="text-5xl font-bold text-foreground tracking-tight">
+              <span className="text-gradient-primary">NeuroEndoSim</span>
             </h1>
-            <p className="text-lg text-muted-foreground">
-              Transsphenoidal Pituitary Tumor Resection Training
+            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+              Transsphenoidal Pituitary Tumor Resection Training with Real-Time AI Coaching
             </p>
           </div>
 
-          <div className="bg-card border border-border rounded-lg p-6 space-y-6">
-            <h2 className="text-xl font-semibold text-foreground">How It Works</h2>
+          {/* Feature Cards */}
+          <MedicalCard variant="glass" gradient className="p-6 space-y-6">
+            <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+              <Stethoscope className="w-5 h-5 text-primary" />
+              How It Works
+            </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-secondary/50 rounded-lg p-4 space-y-2">
-                <div className="text-2xl">🖐️</div>
-                <h3 className="font-medium text-foreground">Hand Tracking</h3>
-                <p className="text-sm text-muted-foreground">
-                  Your hand controls the endoscope. Move to navigate, rotate wrist to change scope angle.
-                </p>
-              </div>
+              <MedicalCard variant="elevated" size="sm" className="group hover:shadow-glow-sm transition-all">
+                <div className="flex items-start gap-4">
+                  <MedicalCardIcon className="bg-primary/20 group-hover:bg-primary/30 transition-colors">
+                    <Hand className="w-5 h-5 text-primary" />
+                  </MedicalCardIcon>
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-1">Hand Tracking</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Your hand controls the endoscope. Move to navigate, rotate wrist to change scope angle.
+                    </p>
+                  </div>
+                </div>
+              </MedicalCard>
               
-              <div className="bg-secondary/50 rounded-lg p-4 space-y-2">
-                <div className="text-2xl">🔭</div>
-                <h3 className="font-medium text-foreground">Pivot Mechanics</h3>
-                <p className="text-sm text-muted-foreground">
-                  The scope pivots at the nostril - small hand movements create larger tip movements.
-                </p>
-              </div>
+              <MedicalCard variant="elevated" size="sm" className="group hover:shadow-glow-sm transition-all">
+                <div className="flex items-start gap-4">
+                  <MedicalCardIcon className="bg-accent/20 group-hover:bg-accent/30 transition-colors">
+                    <Telescope className="w-5 h-5 text-accent" />
+                  </MedicalCardIcon>
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-1">Pivot Mechanics</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      The scope pivots at the nostril - small hand movements create larger tip movements.
+                    </p>
+                  </div>
+                </div>
+              </MedicalCard>
               
-              <div className="bg-secondary/50 rounded-lg p-4 space-y-2">
-                <div className="text-2xl">👌</div>
-                <h3 className="font-medium text-foreground">Tool Control</h3>
-                <p className="text-sm text-muted-foreground">
-                  Pinch gesture activates tools. Use secondary hand for dual-handed procedures.
-                </p>
-              </div>
+              <MedicalCard variant="elevated" size="sm" className="group hover:shadow-glow-sm transition-all">
+                <div className="flex items-start gap-4">
+                  <MedicalCardIcon className="bg-success/20 group-hover:bg-success/30 transition-colors">
+                    <GripHorizontal className="w-5 h-5 text-success" />
+                  </MedicalCardIcon>
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-1">Tool Control</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Pinch gesture activates tools. Use secondary hand for dual-handed procedures.
+                    </p>
+                  </div>
+                </div>
+              </MedicalCard>
               
-              <div className="bg-secondary/50 rounded-lg p-4 space-y-2">
-                <div className="text-2xl">👨‍⚕️</div>
-                <h3 className="font-medium text-foreground">AI Coaching</h3>
-                <p className="text-sm text-muted-foreground">
-                  Dr. Chen provides real-time guidance as your attending surgeon.
-                </p>
-              </div>
+              <MedicalCard variant="elevated" size="sm" className="group hover:shadow-glow-sm transition-all">
+                <div className="flex items-start gap-4">
+                  <MedicalCardIcon className="bg-warning/20 group-hover:bg-warning/30 transition-colors">
+                    <Stethoscope className="w-5 h-5 text-warning" />
+                  </MedicalCardIcon>
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-1">AI Coaching</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Dr. Chen provides real-time guidance powered by Gemini 3 Pro.
+                    </p>
+                  </div>
+                </div>
+              </MedicalCard>
             </div>
 
-            <div className="pt-4 border-t border-border">
-              <h3 className="font-medium text-foreground mb-3">5 Progressive Levels</h3>
+            {/* Level Timeline */}
+            <div className="pt-4 border-t border-border/50">
+              <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
+                <Target className="w-4 h-4 text-primary" />
+                5 Progressive Levels
+              </h3>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { id: 1, name: 'Nasal Navigation', icon: '🏃' },
-                  { id: 2, name: 'Sphenoidotomy', icon: '🔨' },
-                  { id: 3, name: 'Sellar Exposure', icon: '🎯' },
-                  { id: 4, name: 'Tumor Resection', icon: '🧠' },
-                  { id: 5, name: 'Reconstruction', icon: '🔧' },
+                  { id: 1, name: 'Nasal Navigation', icon: <Navigation className="w-3.5 h-3.5" />, color: 'bg-primary/20 text-primary border-primary/30' },
+                  { id: 2, name: 'Sphenoidotomy', icon: <Hammer className="w-3.5 h-3.5" />, color: 'bg-warning/20 text-warning border-warning/30' },
+                  { id: 3, name: 'Sellar Exposure', icon: <Target className="w-3.5 h-3.5" />, color: 'bg-accent/20 text-accent border-accent/30' },
+                  { id: 4, name: 'Tumor Resection', icon: <Brain className="w-3.5 h-3.5" />, color: 'bg-success/20 text-success border-success/30' },
+                  { id: 5, name: 'Reconstruction', icon: <Wrench className="w-3.5 h-3.5" />, color: 'bg-vitals-bp/20 text-vitals-bp border-vitals-bp/30' },
                 ].map(level => (
                   <span
                     key={level.id}
-                    className="bg-secondary px-3 py-1.5 rounded-md text-sm text-foreground"
+                    className={cn(
+                      'inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-all hover:scale-105',
+                      level.color
+                    )}
                   >
-                    {level.icon} {level.name}
+                    {level.icon}
+                    {level.name}
                   </span>
                 ))}
               </div>
             </div>
-          </div>
+          </MedicalCard>
 
+          {/* CTA */}
           <div className="text-center space-y-4">
             <Button
               size="lg"
               onClick={handleStart}
-              className="w-full md:w-auto px-12 py-6 text-lg glow-primary"
+              className="px-12 py-6 text-lg glow-primary font-semibold group"
             >
+              <Play className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
               Start Simulator
             </Button>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground flex items-center justify-center gap-2">
+              <Camera className="w-3.5 h-3.5" />
               Requires webcam access for hand tracking
             </p>
           </div>
@@ -386,19 +458,23 @@ export default function Simulator() {
       {/* Main View Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="h-12 bg-card border-b border-border flex items-center justify-between px-4 flex-shrink-0">
+        <header className="h-14 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-4 flex-shrink-0">
           <div className="flex items-center gap-4">
-            <h1 className="text-sm font-semibold text-foreground">
-              Endoscopic Surgery Simulator
-            </h1>
-            <span className="text-xs text-muted-foreground">
-              Level {simulator.gameState.currentLevel}
+            <div className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-primary" />
+              <h1 className="text-sm font-bold text-foreground">
+                NeuroEndoSim
+              </h1>
+            </div>
+            <div className="h-4 w-px bg-border" />
+            <span className="text-xs text-muted-foreground font-medium">
+              Level {simulator.gameState.currentLevel} • {LEVEL_CONFIG[simulator.gameState.currentLevel]?.name}
             </span>
           </div>
           
           <div className="flex items-center gap-2">
             {simulator.gameState.isPaused ? (
-              <Button size="sm" variant="outline" onClick={simulator.resumeGame}>
+              <Button size="sm" onClick={simulator.resumeGame} className="glow-primary">
                 Resume
               </Button>
             ) : (
@@ -431,8 +507,8 @@ export default function Simulator() {
         </main>
 
         {/* Bottom Bar - Tools and Doppler */}
-        <footer className="h-auto bg-card border-t border-border p-2 flex-shrink-0">
-          <div className="flex gap-2">
+        <footer className="h-auto bg-card/80 backdrop-blur-sm border-t border-border p-3 flex-shrink-0">
+          <div className="flex gap-3">
             <div className="flex-1">
               <ToolSelector
                 toolState={simulator.gameState.tool}
@@ -441,7 +517,7 @@ export default function Simulator() {
               />
             </div>
             {simulator.gameState.tool.activeTool === 'doppler' && (
-              <div className="w-48">
+              <div className="w-52">
                 <DopplerFeedback
                   dopplerState={simulator.gameState.tool.dopplerState}
                   isActive={simulator.gameState.tool.activeTool === 'doppler'}
@@ -453,7 +529,7 @@ export default function Simulator() {
       </div>
 
       {/* Right Sidebar */}
-      <aside className="w-80 bg-card border-l border-border flex flex-col min-h-0 flex-shrink-0">
+      <aside className="w-80 bg-gradient-to-b from-card to-card/80 border-l border-border flex flex-col min-h-0 flex-shrink-0">
         {/* Hand Tracking Preview */}
         <div className="p-3 border-b border-border flex-shrink-0">
           <div className="aspect-[4/3]">

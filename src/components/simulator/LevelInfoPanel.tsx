@@ -1,25 +1,30 @@
-import { LevelState, LevelObjective, TumorScenario, KNOSP_GRADES } from '@/types/simulator';
+import { LevelState, LevelObjective } from '@/types/simulator';
 import { cn } from '@/lib/utils';
+import { MedicalCard, StatusIndicator } from '@/components/ui/medical-card';
+import { 
+  Navigation, 
+  Hammer, 
+  Target, 
+  Brain, 
+  Wrench,
+  CheckCircle2,
+  Clock,
+  BarChart3,
+  Droplets,
+  Activity
+} from 'lucide-react';
 
 interface LevelInfoPanelProps {
   levelState: LevelState;
   timeElapsed: number;
 }
 
-const LEVEL_NAMES: Record<number, string> = {
-  1: 'Nasal Navigation',
-  2: 'Sphenoidotomy',
-  3: 'Sellar Exposure',
-  4: 'Tumor Resection',
-  5: 'Reconstruction',
-};
-
-const LEVEL_ICONS: Record<number, string> = {
-  1: '🏃',
-  2: '🔨',
-  3: '🎯',
-  4: '🧠',
-  5: '🔧',
+const LEVEL_CONFIG: Record<number, { name: string; icon: React.ReactNode; color: string }> = {
+  1: { name: 'Nasal Navigation', icon: <Navigation className="w-5 h-5" />, color: 'text-primary' },
+  2: { name: 'Sphenoidotomy', icon: <Hammer className="w-5 h-5" />, color: 'text-warning' },
+  3: { name: 'Sellar Exposure', icon: <Target className="w-5 h-5" />, color: 'text-accent' },
+  4: { name: 'Tumor Resection', icon: <Brain className="w-5 h-5" />, color: 'text-success' },
+  5: { name: 'Reconstruction', icon: <Wrench className="w-5 h-5" />, color: 'text-vitals-bp' },
 };
 
 function formatTime(seconds: number): string {
@@ -32,24 +37,24 @@ function ObjectiveItem({ objective }: { objective: LevelObjective }) {
   return (
     <div
       className={cn(
-        'flex items-start gap-2 py-1.5',
-        objective.isCompleted ? 'opacity-60' : ''
+        'flex items-start gap-2.5 py-2 px-2.5 rounded-lg transition-all',
+        objective.isCompleted ? 'bg-success/5 opacity-70' : 'bg-secondary/30 hover:bg-secondary/50'
       )}
     >
       <div
         className={cn(
-          'w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs',
+          'w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 transition-all',
           objective.isCompleted
-            ? 'bg-success text-success-foreground'
-            : 'bg-secondary border border-border'
+            ? 'bg-success text-success-foreground shadow-[0_0_8px_hsl(var(--success)/0.4)]'
+            : 'bg-muted border border-border'
         )}
       >
-        {objective.isCompleted ? '✓' : ''}
+        {objective.isCompleted && <CheckCircle2 className="w-3 h-3" />}
       </div>
       <div className="flex-1 min-w-0">
         <p
           className={cn(
-            'text-sm',
+            'text-sm leading-relaxed',
             objective.isCompleted
               ? 'text-muted-foreground line-through'
               : 'text-foreground'
@@ -57,11 +62,11 @@ function ObjectiveItem({ objective }: { objective: LevelObjective }) {
         >
           {objective.description}
         </p>
-        {objective.targetValue !== undefined && (
-          <div className="mt-1">
-            <div className="h-1 bg-muted rounded-full overflow-hidden">
+        {objective.targetValue !== undefined && !objective.isCompleted && (
+          <div className="mt-2">
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
               <div
-                className="h-full bg-primary transition-all duration-300"
+                className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-500 rounded-full"
                 style={{
                   width: `${Math.min(
                     100,
@@ -70,7 +75,7 @@ function ObjectiveItem({ objective }: { objective: LevelObjective }) {
                 }}
               />
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground mt-1 font-mono">
               {objective.currentValue || 0} / {objective.targetValue}
             </p>
           </div>
@@ -85,29 +90,32 @@ export default function LevelInfoPanel({ levelState, timeElapsed }: LevelInfoPan
   const totalCount = levelState.objectives.length;
   const progressPercent = (completedCount / totalCount) * 100;
   const scenario = levelState.scenario;
+  const levelConfig = LEVEL_CONFIG[levelState.id];
 
   return (
-    <div className="bg-card rounded-lg border border-border overflow-hidden">
+    <MedicalCard variant="glass" className="overflow-hidden">
       {/* Scenario Badge (if active) */}
       {scenario && (
-        <div className="px-4 py-2 bg-primary/10 border-b border-border flex items-center justify-between">
+        <div className="px-4 py-2.5 bg-gradient-to-r from-primary/10 to-transparent border-b border-border/50 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className={cn(
-              'px-2 py-0.5 rounded text-xs font-semibold',
+              'px-2.5 py-1 rounded-md text-xs font-bold tracking-wide',
               scenario.type === 'functioning' 
-                ? 'bg-amber-500/20 text-amber-400' 
-                : 'bg-blue-500/20 text-blue-400'
+                ? 'bg-warning/20 text-warning border border-warning/30' 
+                : 'bg-vitals-bp/20 text-vitals-bp border border-vitals-bp/30'
             )}>
               {scenario.type === 'functioning' ? 'FA' : 'NFA'}
-              {scenario.subtype && ` - ${scenario.subtype}`}
+              {scenario.subtype && ` • ${scenario.subtype}`}
             </span>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground font-mono">
               Knosp {scenario.knospGrade}
             </span>
           </div>
           <span className={cn(
-            'text-xs font-medium',
-            scenario.goal === 'biochemical_cure' ? 'text-amber-400' : 'text-blue-400'
+            'text-xs font-semibold px-2 py-0.5 rounded',
+            scenario.goal === 'biochemical_cure' 
+              ? 'text-warning bg-warning/10' 
+              : 'text-vitals-bp bg-vitals-bp/10'
           )}>
             {scenario.goal === 'biochemical_cure' ? 'Cure' : 'Decompress'}
           </span>
@@ -115,36 +123,46 @@ export default function LevelInfoPanel({ levelState, timeElapsed }: LevelInfoPan
       )}
 
       {/* Level Header */}
-      <div className="px-4 py-3 bg-secondary/50 border-b border-border">
+      <div className="px-4 py-4 bg-gradient-to-b from-secondary/50 to-transparent border-b border-border/50">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">{LEVEL_ICONS[levelState.id]}</span>
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              'w-11 h-11 rounded-xl flex items-center justify-center',
+              'bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20',
+              levelConfig.color
+            )}>
+              {levelConfig.icon}
+            </div>
             <div>
-              <h2 className="text-sm font-semibold text-foreground">
+              <h2 className="text-sm font-bold text-foreground">
                 Level {levelState.id}
               </h2>
               <p className="text-xs text-muted-foreground">
-                {LEVEL_NAMES[levelState.id]}
+                {levelConfig.name}
               </p>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-lg font-mono text-primary font-bold">
-              {formatTime(timeElapsed)}
-            </p>
-            <p className="text-xs text-muted-foreground">Time</p>
+            <div className="flex items-center gap-1.5 text-primary">
+              <Clock className="w-4 h-4" />
+              <p className="text-xl font-mono font-bold">
+                {formatTime(timeElapsed)}
+              </p>
+            </div>
           </div>
         </div>
         
         {/* Progress bar */}
-        <div className="mt-3">
-          <div className="flex justify-between text-xs text-muted-foreground mb-1">
-            <span>Progress</span>
-            <span>{completedCount}/{totalCount} objectives</span>
+        <div className="mt-4">
+          <div className="flex justify-between text-xs mb-2">
+            <span className="text-muted-foreground font-medium">Progress</span>
+            <span className="font-mono text-primary font-semibold">
+              {completedCount}/{totalCount}
+            </span>
           </div>
           <div className="h-2 bg-muted rounded-full overflow-hidden">
             <div
-              className="h-full bg-primary transition-all duration-500"
+              className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-500 rounded-full shadow-[0_0_10px_hsl(var(--primary)/0.4)]"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
@@ -152,8 +170,9 @@ export default function LevelInfoPanel({ levelState, timeElapsed }: LevelInfoPan
       </div>
       
       {/* Objectives */}
-      <div className="px-4 py-3 space-y-1">
-        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+      <div className="px-4 py-3 space-y-1.5">
+        <h3 className="medical-label flex items-center gap-2 mb-2">
+          <Target className="w-3.5 h-3.5 text-primary" />
           Objectives
         </h3>
         {levelState.objectives.map((objective) => (
@@ -162,24 +181,36 @@ export default function LevelInfoPanel({ levelState, timeElapsed }: LevelInfoPan
       </div>
       
       {/* Metrics Summary */}
-      <div className="px-4 py-3 border-t border-border bg-secondary/30">
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div>
-            <p className="text-lg font-mono text-foreground">
+      <div className="px-4 py-3 border-t border-border/50 bg-secondary/20">
+        <div className="grid grid-cols-3 gap-3">
+          <div className="text-center p-2 rounded-lg bg-card/50">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <Activity className="w-3 h-3 text-muted-foreground" />
+            </div>
+            <p className="medical-stat text-foreground">
               {levelState.metrics.mucosalContacts}
             </p>
-            <p className="text-xs text-muted-foreground">Contacts</p>
+            <p className="text-[10px] text-muted-foreground">Contacts</p>
           </div>
-          <div>
-            <p className="text-lg font-mono text-foreground">
+          <div className="text-center p-2 rounded-lg bg-card/50">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <BarChart3 className="w-3 h-3 text-muted-foreground" />
+            </div>
+            <p className="medical-stat text-foreground">
               {levelState.metrics.scopeAngleChanges}
             </p>
-            <p className="text-xs text-muted-foreground">Angle Δ</p>
+            <p className="text-[10px] text-muted-foreground">Angle Δ</p>
           </div>
-          <div>
+          <div className="text-center p-2 rounded-lg bg-card/50">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <Droplets className={cn(
+                "w-3 h-3",
+                levelState.metrics.bloodInField ? 'text-destructive' : 'text-muted-foreground'
+              )} />
+            </div>
             <p
               className={cn(
-                'text-lg font-mono',
+                'medical-stat',
                 levelState.metrics.bloodInField
                   ? 'text-destructive'
                   : 'text-success'
@@ -187,10 +218,10 @@ export default function LevelInfoPanel({ levelState, timeElapsed }: LevelInfoPan
             >
               {levelState.metrics.bloodInField ? '!' : '✓'}
             </p>
-            <p className="text-xs text-muted-foreground">Blood</p>
+            <p className="text-[10px] text-muted-foreground">Blood</p>
           </div>
         </div>
       </div>
-    </div>
+    </MedicalCard>
   );
 }
