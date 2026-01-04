@@ -309,19 +309,19 @@ export function useSimulator(): UseSimulatorReturn {
       if (prev.tool.activeTool === 'doppler') {
         const signal = getDopplerSignal(endoscopeState.tipPosition);
         
-        // Update procedural audio engine
+        // Update procedural audio engine - returns ICAMetrics
         const toolPos = new THREE.Vector3(
           endoscopeState.tipPosition.x,
           endoscopeState.tipPosition.y,
           endoscopeState.tipPosition.z
         );
-        const audioIntensity = dopplerAudio.updateDoppler(toolPos, pinchStrength > 0.5);
+        const metrics = dopplerAudio.updateDoppler(toolPos, pinchStrength > 0.5);
         
         return {
           isActive: true,
-          signalStrength: Math.max(signal.strength, audioIntensity),
-          nearestICADistance: signal.nearestDistance,
-          audioPlaying: signal.strength > 0.2 || audioIntensity > 0.2,
+          signalStrength: Math.max(signal.strength, metrics.rawIntensity),
+          nearestICADistance: Math.min(signal.nearestDistance, metrics.distance),
+          audioPlaying: signal.strength > 0.2 || metrics.rawIntensity > 0.2,
         };
       }
       // Silence doppler when not active

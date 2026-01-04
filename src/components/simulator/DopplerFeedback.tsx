@@ -1,19 +1,16 @@
 import { useEffect, useRef, useMemo } from 'react';
 import { DopplerState } from '@/types/simulator';
 import { cn } from '@/lib/utils';
+import { MedicalCard, StatusIndicator } from '@/components/ui/medical-card';
+import { Radio, AlertTriangle, Activity, Heart } from 'lucide-react';
 
 interface DopplerFeedbackProps {
   dopplerState: DopplerState;
   isActive: boolean;
 }
 
-// Audio context for Doppler sounds
-let audioContext: AudioContext | null = null;
-let oscillator: OscillatorNode | null = null;
-let gainNode: GainNode | null = null;
-
 export default function DopplerFeedback({ dopplerState, isActive }: DopplerFeedbackProps) {
-  const animationRef = useRef<number>(0);
+  const pulseRef = useRef<HTMLDivElement>(null);
   
   // Calculate visual intensity based on signal strength
   const signalIntensity = useMemo(() => {
@@ -21,93 +18,67 @@ export default function DopplerFeedback({ dopplerState, isActive }: DopplerFeedb
     return dopplerState.signalStrength;
   }, [isActive, dopplerState.isActive, dopplerState.signalStrength]);
 
-  // Audio feedback for Doppler signal
+  // Pulsating heartbeat animation for signal bars
   useEffect(() => {
-    if (!isActive || signalIntensity < 0.1) {
-      // Stop audio when not active or signal too weak
-      if (oscillator) {
-        oscillator.stop();
-        oscillator = null;
+    if (!pulseRef.current || signalIntensity < 0.1) return;
+    
+    // Animate at 70 BPM (857ms per beat)
+    const interval = setInterval(() => {
+      if (pulseRef.current) {
+        pulseRef.current.style.transform = 'scale(1.05)';
+        setTimeout(() => {
+          if (pulseRef.current) {
+            pulseRef.current.style.transform = 'scale(1)';
+          }
+        }, 150);
       }
-      return;
-    }
-
-    // Initialize audio context
-    if (!audioContext) {
-      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-
-    // Create oscillator for pulsating Doppler sound
-    if (!oscillator && audioContext) {
-      oscillator = audioContext.createOscillator();
-      gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      // Low frequency base for arterial pulse simulation
-      oscillator.frequency.value = 100 + signalIntensity * 200;
-      oscillator.type = 'sine';
-      
-      gainNode.gain.value = signalIntensity * 0.3;
-      
-      oscillator.start();
-    } else if (oscillator && gainNode) {
-      // Update frequency and volume based on proximity
-      oscillator.frequency.value = 100 + signalIntensity * 200;
-      gainNode.gain.value = signalIntensity * 0.3;
-    }
-
-    // Pulsating effect (simulating heartbeat)
-    const pulseInterval = setInterval(() => {
-      if (gainNode && audioContext) {
-        const now = audioContext.currentTime;
-        // Simulate heartbeat rhythm (~72 BPM)
-        gainNode.gain.setValueAtTime(signalIntensity * 0.3, now);
-        gainNode.gain.linearRampToValueAtTime(signalIntensity * 0.5, now + 0.1);
-        gainNode.gain.linearRampToValueAtTime(signalIntensity * 0.3, now + 0.2);
-      }
-    }, 833); // ~72 BPM
-
-    return () => {
-      clearInterval(pulseInterval);
-    };
-  }, [isActive, signalIntensity]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (oscillator) {
-        oscillator.stop();
-        oscillator = null;
-      }
-      if (audioContext) {
-        audioContext.close();
-        audioContext = null;
-      }
-    };
-  }, []);
+    }, 857);
+    
+    return () => clearInterval(interval);
+  }, [signalIntensity]);
 
   if (!isActive) return null;
 
   const signalBars = Math.ceil(signalIntensity * 5);
   const distanceWarning = dopplerState.nearestICADistance < 0.5;
+  const distanceCritical = dopplerState.nearestICADistance < 0.3;
+
+  // Determine danger level for styling
+  const dangerLevel = distanceCritical ? 'critical' : distanceWarning ? 'warning' : signalIntensity > 0.3 ? 'caution' : 'safe';
 
   return (
-    <div className="bg-card rounded-lg border border-border p-3">
+    <MedicalCard 
+      variant={dangerLevel === 'critical' ? 'danger' : dangerLevel === 'warning' ? 'warning' : 'glass'}
+      glow={dangerLevel === 'critical' ? 'danger' : dangerLevel === 'warning' ? 'warning' : 'none'}
+      size="sm"
+      className="relative overflow-hidden"
+    >
+      {/* Scan line effect */}
+      <div className="absolute inset-0 pointer-events-none scan-line opacity-30" />
+      
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        <h3 className="medical-label flex items-center gap-1.5">
+          <Radio className="w-3.5 h-3.5 text-primary" />
           Micro-Doppler
         </h3>
-        <div className={cn(
-          "w-2 h-2 rounded-full animate-pulse",
-          signalIntensity > 0.2 ? "bg-destructive" : "bg-muted"
-        )} />
+        <div className="flex items-center gap-2">
+          {signalIntensity > 0.1 && (
+            <Heart className={cn(
+              "w-3.5 h-3.5",
+              dangerLevel === 'critical' ? "text-destructive animate-heartbeat" :
+              dangerLevel === 'warning' ? "text-warning animate-heartbeat" :
+              "text-vitals-heart"
+            )} />
+          )}
+          <StatusIndicator 
+            status={signalIntensity > 0.6 ? 'critical' : signalIntensity > 0.3 ? 'warning' : signalIntensity > 0.1 ? 'stable' : 'inactive'} 
+          />
+        </div>
       </div>
 
-      {/* Signal strength meter */}
-      <div className="mb-3">
-        <div className="flex items-center gap-1 h-8">
+      {/* Signal strength meter with heartbeat pulsation */}
+      <div className="mb-3" ref={pulseRef} style={{ transition: 'transform 0.15s ease-out' }}>
+        <div className="flex items-end gap-1 h-10 bg-secondary/30 rounded-lg p-1.5">
           {[1, 2, 3, 4, 5].map((bar) => (
             <div
               key={bar}
@@ -115,50 +86,72 @@ export default function DopplerFeedback({ dopplerState, isActive }: DopplerFeedb
                 "flex-1 rounded-sm transition-all duration-150",
                 bar <= signalBars
                   ? signalIntensity > 0.7 
-                    ? "bg-destructive animate-pulse" 
+                    ? "bg-destructive shadow-[0_0_8px_hsl(var(--destructive)/0.5)]" 
                     : signalIntensity > 0.4 
-                      ? "bg-warning" 
+                      ? "bg-warning shadow-[0_0_6px_hsl(var(--warning)/0.4)]" 
                       : "bg-success"
-                  : "bg-muted"
+                  : "bg-muted/50"
               )}
-              style={{ height: `${bar * 20}%` }}
+              style={{ 
+                height: `${bar * 20}%`,
+                animationDelay: bar <= signalBars ? `${bar * 50}ms` : '0ms',
+              }}
             />
           ))}
         </div>
-        <p className="text-xs text-muted-foreground text-center mt-1">
-          Signal: {Math.round(signalIntensity * 100)}%
-        </p>
+        <div className="flex justify-between mt-1.5 text-xs">
+          <span className="text-muted-foreground">Signal</span>
+          <span className={cn(
+            "font-mono font-semibold",
+            signalIntensity > 0.6 ? "text-destructive" : 
+            signalIntensity > 0.3 ? "text-warning" : 
+            "text-primary"
+          )}>
+            {Math.round(signalIntensity * 100)}%
+          </span>
+        </div>
       </div>
 
-      {/* Distance indicator */}
+      {/* Distance indicator with danger visualization */}
       <div className={cn(
-        "text-center py-2 rounded-md text-sm font-mono",
-        distanceWarning 
-          ? "bg-destructive/20 text-destructive glow-danger" 
-          : "bg-secondary text-foreground"
+        "text-center py-2.5 rounded-lg text-sm font-mono font-semibold transition-all",
+        distanceCritical 
+          ? "bg-destructive/20 text-destructive border border-destructive/50 glow-danger" 
+          : distanceWarning
+            ? "bg-warning/20 text-warning border border-warning/50"
+            : "bg-secondary/50 text-foreground border border-border"
       )}>
-        {distanceWarning ? (
-          <span className="animate-pulse">⚠ ICA &lt;5mm</span>
+        {distanceCritical ? (
+          <span className="flex items-center justify-center gap-2 animate-pulse">
+            <AlertTriangle className="w-4 h-4" />
+            ICA &lt;3mm — CRITICAL
+          </span>
+        ) : distanceWarning ? (
+          <span className="flex items-center justify-center gap-2">
+            <Activity className="w-4 h-4" />
+            ICA: {(dopplerState.nearestICADistance * 10).toFixed(1)}mm
+          </span>
         ) : (
           <span>ICA: {(dopplerState.nearestICADistance * 10).toFixed(1)}mm</span>
         )}
       </div>
 
-      {/* "Doppler is Dogma" reminder */}
-      {signalIntensity > 0.6 && (
-        <div className="mt-3 p-2 bg-destructive/10 rounded border border-destructive/30">
-          <p className="text-xs text-destructive text-center font-medium">
-            "Doppler is Dogma" - Verify before dural incision
+      {/* "Doppler is Dogma" warning for high signal */}
+      {signalIntensity > 0.5 && (
+        <div className="mt-3 p-2.5 bg-destructive/10 rounded-lg border border-destructive/40">
+          <p className="text-xs text-destructive text-center font-semibold flex items-center justify-center gap-2">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            "Doppler is Dogma" — Verify before incision
           </p>
         </div>
       )}
 
       {/* Usage hint */}
-      <div className="mt-3 pt-3 border-t border-border">
-        <p className="text-xs text-muted-foreground text-center">
-          Sweep probe to map ICA position
+      <div className="mt-3 pt-3 border-t border-border/50">
+        <p className="text-[10px] text-muted-foreground text-center">
+          Sweep probe to map ICA position • 70 BPM pulsatility
         </p>
       </div>
-    </div>
+    </MedicalCard>
   );
 }
