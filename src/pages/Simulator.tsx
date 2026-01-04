@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useHandTracking } from '@/hooks/useHandTracking';
 import { useSimulator } from '@/hooks/useSimulator';
 import { useAICoach } from '@/hooks/useAICoach';
+import { useReplaySystem } from '@/hooks/useReplaySystem';
 import EndoscopicView from '@/components/simulator/EndoscopicView';
 import HandTrackingPreview from '@/components/simulator/HandTrackingPreview';
 import VitalsMonitor from '@/components/simulator/VitalsMonitor';
@@ -12,10 +13,14 @@ import DopplerFeedback from '@/components/simulator/DopplerFeedback';
 import PostOpReport from '@/components/simulator/PostOpReport';
 import ScenarioSelection from '@/components/simulator/ScenarioSelection';
 import ICAMappingOverlay from '@/components/simulator/ICAMappingOverlay';
+import { ReplayControls } from '@/components/simulator/ReplayControls';
+import { RecordingsList } from '@/components/simulator/RecordingsList';
+import { ReplayView } from '@/components/simulator/ReplayView';
 import { distanceToDangerLevel } from '@/lib/haptic/HapticFeedback';
 import { Button } from '@/components/ui/button';
 import { MedicalCard, MedicalCardIcon } from '@/components/ui/medical-card';
 import { LevelId, AttendingMessage, TumorScenario } from '@/types/simulator';
+import type { InterpolatedFrame } from '@/lib/replay/types';
 import { cn } from '@/lib/utils';
 import { 
   Hand, 
@@ -28,7 +33,9 @@ import {
   Brain,
   Wrench,
   Play,
-  Camera
+  Camera,
+  Film,
+  X
 } from 'lucide-react';
 
 const LEVEL_CONFIG: Record<number, { name: string }> = {
@@ -49,6 +56,16 @@ export default function Simulator() {
   const [showPostOpReport, setShowPostOpReport] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState<TumorScenario | null>(null);
   const [aiMessages, setAiMessages] = useState<AttendingMessage[]>([]);
+  
+  // Replay system state
+  const [isReplayMode, setIsReplayMode] = useState(false);
+  const [currentReplayFrame, setCurrentReplayFrame] = useState<InterpolatedFrame | null>(null);
+  const [showRecordingsList, setShowRecordingsList] = useState(false);
+  
+  // Replay system hook
+  const replaySystem = useReplaySystem({
+    onPlaybackFrame: setCurrentReplayFrame,
+  });
   
   // Track previous state for detecting changes
   const prevStateRef = useRef({
@@ -85,6 +102,19 @@ export default function Simulator() {
     isStarted,
     simulator.gameState.isPaused,
   ]);
+
+  // Capture frames for replay during gameplay
+  useEffect(() => {
+    if (!isStarted || simulator.gameState.isPaused || simulator.gameState.isCalibrating) return;
+    
+    // Capture frame for replay recording
+    replaySystem.captureFrame({
+      endoscope: simulator.gameState.endoscope,
+      tool: simulator.gameState.tool,
+      step: simulator.gameState.surgicalStep,
+      bloodLevel: simulator.gameState.bloodLevel,
+    });
+  }, [isStarted, simulator.gameState, replaySystem]);
 
   // AI Coaching - triggered by state changes and periodically
   useEffect(() => {
@@ -173,6 +203,9 @@ export default function Simulator() {
     simulator.completeCalibration();
     setIsStarted(true);
     
+    // Start recording for replay
+    replaySystem.startRecording(1, selectedScenario || undefined);
+    
     // Request initial AI greeting
     setTimeout(() => {
       aiCoach.requestCoaching(simulator.gameState, 'milestone').then(message => {
@@ -181,31 +214,60 @@ export default function Simulator() {
         }
       });
     }, 1000);
-  }, [handTracking, simulator, aiCoach, selectedScenario]);
+  }, [handTracking, simulator, aiCoach, selectedScenario, replaySystem]);
 
   const handleLevelSelect = useCallback((level: LevelId) => {
     simulator.startLevel(level, selectedScenario || undefined);
     setIsStarted(true);
     setShowPostOpReport(false);
-    setAiMessages([]); // Clear messages on level change
-  }, [simulator, selectedScenario]);
+    setAiMessages([]);
+    // Start recording for replay
+    replaySystem.startRecording(level, selectedScenario || undefined);
+  }, [simulator, selectedScenario, replaySystem]);
 
-  const handleLevelComplete = useCallback(() => {
+  const handleLevelComplete = useCallback(async () => {
+    // Stop recording and save
+    await replaySystem.stopRecording(simulator.gameState.levelState.score);
     setShowPostOpReport(true);
-  }, []);
+  }, [replaySystem, simulator.gameState.levelState.score]);
 
   const handleContinueToNextLevel = useCallback(() => {
     const nextLevel = Math.min(5, simulator.gameState.currentLevel + 1) as LevelId;
     simulator.startLevel(nextLevel, selectedScenario || undefined);
     setShowPostOpReport(false);
     setAiMessages([]);
-  }, [simulator, selectedScenario]);
+    // Start new recording
+    replaySystem.startRecording(nextLevel, selectedScenario || undefined);
+  }, [simulator, selectedScenario, replaySystem]);
 
   const handleRestartLevel = useCallback(() => {
     simulator.resetGame();
     setShowPostOpReport(false);
     setAiMessages([]);
   }, [simulator]);
+
+  // Replay handlers
+  const handleOpenReplays = useCallback(() => {
+    setShowRecordingsList(true);
+  }, []);
+
+  const handleCloseReplays = useCallback(() => {
+    setShowRecordingsList(false);
+    setIsReplayMode(false);
+    replaySystem.unloadRecording();
+    setCurrentReplayFrame(null);
+  }, [replaySystem]);
+
+  const handleSelectRecording = useCallback(async (id: string) => {
+    await replaySystem.loadRecording(id);
+    setIsReplayMode(true);
+  }, [replaySystem]);
+
+  const handleExitReplayMode = useCallback(() => {
+    setIsReplayMode(false);
+    replaySystem.unloadRecording();
+    setCurrentReplayFrame(null);
+  }, [replaySystem]);
 
   // Post-Operative Report Screen
   if (showPostOpReport) {
@@ -342,19 +404,82 @@ export default function Simulator() {
 
           {/* CTA */}
           <div className="text-center space-y-4">
-            <Button
-              size="lg"
-              onClick={handleStart}
-              className="px-12 py-6 text-lg glow-primary font-semibold group"
-            >
-              <Play className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
-              Start Simulator
-            </Button>
+            <div className="flex gap-4 justify-center">
+              <Button
+                size="lg"
+                onClick={handleStart}
+                className="px-12 py-6 text-lg glow-primary font-semibold group"
+              >
+                <Play className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
+                Start Simulator
+              </Button>
+              {replaySystem.savedRecordings.length > 0 && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={handleOpenReplays}
+                  className="px-8 py-6 text-lg group"
+                >
+                  <Film className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
+                  Watch Replays ({replaySystem.savedRecordings.length})
+                </Button>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground flex items-center justify-center gap-2">
               <Camera className="w-3.5 h-3.5" />
               Requires webcam access for hand tracking
             </p>
           </div>
+
+          {/* Recordings Modal */}
+          {showRecordingsList && (
+            <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-8">
+              <MedicalCard variant="default" className="w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                <div className="flex items-center justify-between p-4 border-b border-border">
+                  <h2 className="text-xl font-bold flex items-center gap-2">
+                    <Film className="w-5 h-5 text-primary" />
+                    Surgical Recordings
+                  </h2>
+                  <Button variant="ghost" size="icon" onClick={handleCloseReplays}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-4">
+                  {isReplayMode && replaySystem.playbackState && replaySystem.currentRecording ? (
+                    <div className="space-y-4">
+                      <div className="aspect-video rounded-lg overflow-hidden bg-black">
+                        <ReplayView frame={currentReplayFrame} />
+                      </div>
+                      <ReplayControls
+                        playbackState={replaySystem.playbackState}
+                        events={replaySystem.currentRecording.events}
+                        onPlay={replaySystem.play}
+                        onPause={replaySystem.pause}
+                        onSeek={replaySystem.seek}
+                        onSpeedChange={replaySystem.setSpeed}
+                        onSeekToEvent={replaySystem.seekToEvent}
+                        onSeekToStart={replaySystem.seekToStart}
+                        onSeekToEnd={replaySystem.seekToEnd}
+                        onStepForward={replaySystem.stepForward}
+                        onStepBackward={replaySystem.stepBackward}
+                      />
+                      <Button variant="outline" onClick={handleExitReplayMode} className="w-full">
+                        Back to Recordings List
+                      </Button>
+                    </div>
+                  ) : (
+                    <RecordingsList
+                      recordings={replaySystem.savedRecordings}
+                      onSelect={handleSelectRecording}
+                      onDelete={replaySystem.deleteRecording}
+                      loading={replaySystem.loadingRecording}
+                    />
+                  )}
+                </div>
+              </MedicalCard>
+            </div>
+          )}
         </div>
       </div>
     );
