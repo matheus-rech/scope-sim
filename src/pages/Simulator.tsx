@@ -7,6 +7,7 @@ import VitalsMonitor from '@/components/simulator/VitalsMonitor';
 import AttendingCoach from '@/components/simulator/AttendingCoach';
 import LevelInfoPanel from '@/components/simulator/LevelInfoPanel';
 import ToolSelector from '@/components/simulator/ToolSelector';
+import DopplerFeedback from '@/components/simulator/DopplerFeedback';
 import { Button } from '@/components/ui/button';
 import { LevelId } from '@/types/simulator';
 import { cn } from '@/lib/utils';
@@ -265,13 +266,25 @@ export default function Simulator() {
           </div>
         </main>
 
-        {/* Bottom Bar - Tools */}
-        <footer className="h-24 bg-card border-t border-border p-2 flex-shrink-0">
-          <ToolSelector
-            toolState={simulator.gameState.tool}
-            onToolChange={simulator.setTool}
-            disabled={simulator.gameState.isPaused}
-          />
+        {/* Bottom Bar - Tools and Doppler */}
+        <footer className="h-auto bg-card border-t border-border p-2 flex-shrink-0">
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <ToolSelector
+                toolState={simulator.gameState.tool}
+                onToolChange={simulator.setTool}
+                disabled={simulator.gameState.isPaused}
+              />
+            </div>
+            {simulator.gameState.tool.activeTool === 'doppler' && (
+              <div className="w-48">
+                <DopplerFeedback
+                  dopplerState={simulator.gameState.tool.dopplerState}
+                  isActive={simulator.gameState.tool.activeTool === 'doppler'}
+                />
+              </div>
+            )}
+          </div>
         </footer>
       </div>
 

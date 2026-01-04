@@ -30,7 +30,7 @@ export interface EndoscopeState {
 export interface AnatomicalStructure {
   id: string;
   name: string;
-  type: 'bone' | 'tissue' | 'vessel' | 'nerve' | 'tumor' | 'landmark';
+  type: 'bone' | 'tissue' | 'vessel' | 'nerve' | 'tumor' | 'landmark' | 'dura' | 'gland';
   bounds: {
     center: Vector3D;
     radius: number;
@@ -38,6 +38,16 @@ export interface AnatomicalStructure {
   isCritical: boolean; // e.g., ICA, optic nerve
   visibleAtDepth: [number, number]; // [min, max] depth percentage
   visibleAtAngles: ScopeAngle[];
+  tissueProperties?: TissueProperties;
+}
+
+// Tissue-specific properties for realistic simulation
+export interface TissueProperties {
+  thickness: 'thin' | 'medium' | 'thick';
+  resistance: number; // 0-1, higher = harder to penetrate
+  vascularized: boolean;
+  pulsating?: boolean;
+  color?: string; // Override default color
 }
 
 export interface CollisionResult {
@@ -73,6 +83,77 @@ export const DEFAULT_CONFIG: SimulatorConfig = {
   },
 };
 
+// Knosp Classification for cavernous sinus invasion
+export type KnospGrade = 0 | 1 | 2 | '3A' | '3B' | 4;
+
+export interface KnospClassification {
+  grade: KnospGrade;
+  description: string;
+  surgicalApproach: 'resection' | 'decompression' | 'palliative';
+  expectedRemission: number; // percentage
+}
+
+export const KNOSP_GRADES: Record<KnospGrade, KnospClassification> = {
+  0: {
+    grade: 0,
+    description: 'No cavernous sinus involvement',
+    surgicalApproach: 'resection',
+    expectedRemission: 95,
+  },
+  1: {
+    grade: 1,
+    description: 'Tumor does not extend beyond medial tangent of ICA',
+    surgicalApproach: 'resection',
+    expectedRemission: 85,
+  },
+  2: {
+    grade: 2,
+    description: 'Tumor extends beyond medial tangent but not lateral tangent',
+    surgicalApproach: 'resection',
+    expectedRemission: 70,
+  },
+  '3A': {
+    grade: '3A',
+    description: 'Tumor extends beyond lateral tangent (superior compartment)',
+    surgicalApproach: 'resection',
+    expectedRemission: 50,
+  },
+  '3B': {
+    grade: '3B',
+    description: 'Tumor extends beyond lateral tangent (inferior compartment)',
+    surgicalApproach: 'decompression',
+    expectedRemission: 30,
+  },
+  4: {
+    grade: 4,
+    description: 'Complete ICA encasement',
+    surgicalApproach: 'palliative',
+    expectedRemission: 10,
+  },
+};
+
+// Scenario types for FA vs NFA dichotomy
+export type AdenomaType = 'functioning' | 'non-functioning';
+export type FunctioningSubtype = 'GH' | 'ACTH' | 'PRL' | 'TSH' | 'FSH-LH';
+
+export interface TumorScenario {
+  type: AdenomaType;
+  subtype?: FunctioningSubtype;
+  knospGrade: KnospGrade;
+  size: 'micro' | 'macro' | 'giant'; // <10mm, 10-40mm, >40mm
+  invasive: boolean;
+  goal: 'biochemical_cure' | 'decompression' | 'biopsy';
+  description: string;
+}
+
+// Doppler state for ICA localization
+export interface DopplerState {
+  isActive: boolean;
+  signalStrength: number; // 0-1
+  nearestICADistance: number; // cm
+  audioPlaying: boolean;
+}
+
 // Level system types
 export type LevelId = 1 | 2 | 3 | 4 | 5;
 
@@ -91,6 +172,7 @@ export interface LevelMetrics {
   scopeAngleChanges: number;
   complications: string[];
   extentOfResection?: number; // Level 4 only
+  dopplerUsed?: boolean;
 }
 
 export interface LevelState {
@@ -100,6 +182,7 @@ export interface LevelState {
   metrics: LevelMetrics;
   isCompleted: boolean;
   score: number;
+  scenario?: TumorScenario;
 }
 
 export interface AttendingMessage {
@@ -110,13 +193,14 @@ export interface AttendingMessage {
 }
 
 // Tool types for dual-hand control
-export type ToolType = 'scope' | 'drill' | 'suction' | 'cautery' | 'irrigation';
+export type ToolType = 'scope' | 'drill' | 'suction' | 'cautery' | 'irrigation' | 'doppler' | 'dissector' | 'curette';
 
 export interface ToolState {
   activeTool: ToolType;
   isActive: boolean;
   secondaryHandDetected: boolean;
   pinchStrength: number; // 0-1 for tool activation
+  dopplerState: DopplerState;
 }
 
 // Vitals monitor
@@ -124,6 +208,23 @@ export interface VitalsState {
   heartRate: number;
   bloodPressure: { systolic: number; diastolic: number };
   isStable: boolean;
+}
+
+// Complication types from the surgical guide
+export type ComplicationType = 
+  | 'venous_bleeding'
+  | 'arterial_bleeding'
+  | 'cn6_stretch'
+  | 'cn3_injury'
+  | 'csf_leak'
+  | 'ica_injury'
+  | 'loss_of_plane';
+
+export interface Complication {
+  type: ComplicationType;
+  severity: 'minor' | 'major' | 'critical';
+  managed: boolean;
+  timestamp: number;
 }
 
 // Game state
@@ -136,6 +237,8 @@ export interface GameState {
   attendingMessages: AttendingMessage[];
   isPaused: boolean;
   isCalibrating: boolean;
+  complications: Complication[];
+  scenario?: TumorScenario;
 }
 
 // Hand gesture types
