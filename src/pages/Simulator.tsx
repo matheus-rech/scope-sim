@@ -10,8 +10,9 @@ import LevelInfoPanel from '@/components/simulator/LevelInfoPanel';
 import ToolSelector from '@/components/simulator/ToolSelector';
 import DopplerFeedback from '@/components/simulator/DopplerFeedback';
 import PostOpReport from '@/components/simulator/PostOpReport';
+import ScenarioSelection from '@/components/simulator/ScenarioSelection';
 import { Button } from '@/components/ui/button';
-import { LevelId, AttendingMessage } from '@/types/simulator';
+import { LevelId, AttendingMessage, TumorScenario } from '@/types/simulator';
 import { cn } from '@/lib/utils';
 
 export default function Simulator() {
@@ -20,7 +21,9 @@ export default function Simulator() {
   const aiCoach = useAICoach({ minInterval: 20000, enabled: true });
   const [isStarted, setIsStarted] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
+  const [showScenarioSelection, setShowScenarioSelection] = useState(false);
   const [showPostOpReport, setShowPostOpReport] = useState(false);
+  const [selectedScenario, setSelectedScenario] = useState<TumorScenario | null>(null);
   const [aiMessages, setAiMessages] = useState<AttendingMessage[]>([]);
   
   // Track previous state for detecting changes
@@ -117,12 +120,26 @@ export default function Simulator() {
   const handleStart = useCallback(async () => {
     await handTracking.startTracking();
     setShowInstructions(false);
+    setShowScenarioSelection(true);
   }, [handTracking]);
+
+  const handleScenarioSelect = useCallback((scenario: TumorScenario) => {
+    setSelectedScenario(scenario);
+    setShowScenarioSelection(false);
+    // Will proceed to calibration
+  }, []);
+
+  const handleBackToInstructions = useCallback(() => {
+    setShowScenarioSelection(false);
+    setShowInstructions(true);
+  }, []);
 
   const handleBeginLevel = useCallback(() => {
     if (!handTracking.isCalibrated) {
       handTracking.calibrate();
     }
+    // Start level with selected scenario
+    simulator.startLevel(1, selectedScenario || undefined);
     simulator.completeCalibration();
     setIsStarted(true);
     
@@ -134,14 +151,14 @@ export default function Simulator() {
         }
       });
     }, 1000);
-  }, [handTracking, simulator, aiCoach]);
+  }, [handTracking, simulator, aiCoach, selectedScenario]);
 
   const handleLevelSelect = useCallback((level: LevelId) => {
-    simulator.startLevel(level);
+    simulator.startLevel(level, selectedScenario || undefined);
     setIsStarted(true);
     setShowPostOpReport(false);
     setAiMessages([]); // Clear messages on level change
-  }, [simulator]);
+  }, [simulator, selectedScenario]);
 
   const handleLevelComplete = useCallback(() => {
     setShowPostOpReport(true);
@@ -149,10 +166,10 @@ export default function Simulator() {
 
   const handleContinueToNextLevel = useCallback(() => {
     const nextLevel = Math.min(5, simulator.gameState.currentLevel + 1) as LevelId;
-    simulator.startLevel(nextLevel);
+    simulator.startLevel(nextLevel, selectedScenario || undefined);
     setShowPostOpReport(false);
     setAiMessages([]);
-  }, [simulator]);
+  }, [simulator, selectedScenario]);
 
   const handleRestartLevel = useCallback(() => {
     simulator.resetGame();
@@ -260,6 +277,16 @@ export default function Simulator() {
           </div>
         </div>
       </div>
+    );
+  }
+
+  // Scenario Selection Screen
+  if (showScenarioSelection) {
+    return (
+      <ScenarioSelection
+        onSelect={handleScenarioSelect}
+        onBack={handleBackToInstructions}
+      />
     );
   }
 

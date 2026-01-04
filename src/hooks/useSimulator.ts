@@ -7,6 +7,7 @@ import {
   ToolType,
   HandLandmarks,
   DopplerState,
+  TumorScenario,
 } from '@/types/simulator';
 import {
   createLevelState,
@@ -58,7 +59,7 @@ const initialGameState: GameState = {
 interface UseSimulatorReturn {
   gameState: GameState;
   physics: EndoscopePhysics;
-  startLevel: (levelId: LevelId) => void;
+  startLevel: (levelId: LevelId, scenario?: TumorScenario) => void;
   pauseGame: () => void;
   resumeGame: () => void;
   resetGame: () => void;
@@ -101,7 +102,7 @@ export function useSimulator(): UseSimulatorReturn {
     }));
   }, []);
 
-  const startLevel = useCallback((levelId: LevelId) => {
+  const startLevel = useCallback((levelId: LevelId, scenario?: TumorScenario) => {
     resetLevelHints();
     physicsRef.current.reset();
     collisionCountRef.current = 0;
@@ -109,12 +110,17 @@ export function useSimulator(): UseSimulatorReturn {
     setTimeElapsed(0);
 
     const levelState = createLevelState(levelId);
+    // Add scenario to level state if provided
+    if (scenario) {
+      levelState.scenario = scenario;
+    }
     const introMessage = getIntroMessage(levelId);
 
     setGameState(prev => ({
       ...prev,
       currentLevel: levelId,
       levelState,
+      scenario, // Store scenario at game state level too
       attendingMessages: [introMessage],
       isPaused: false,
       isCalibrating: false,
