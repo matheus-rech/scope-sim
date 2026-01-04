@@ -8,37 +8,41 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap");
+
+@import url("https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;500;600;700&display=swap");
+
 @layer base {
   :root {
     /* Surgical Dark Theme - Premium medical simulation aesthetic */
-    --background: 222 25% 6%;
-    --foreground: 210 25% 94%;
+    --background: 209 40% 96%;
+    --foreground: 222 47% 11%;
 
-    --card: 220 22% 10%;
-    --card-foreground: 210 25% 94%;
+    --card: 210 40% 98%;
+    --card-foreground: 222 47% 11%;
 
-    --popover: 220 22% 10%;
-    --popover-foreground: 210 25% 94%;
+    --popover: 214 31% 91%;
+    --popover-foreground: 222 47% 11%;
 
     /* Primary: Medical Cyan-Teal (sterile/surgical) */
-    --primary: 175 70% 42%;
-    --primary-foreground: 222 25% 6%;
+    --primary: 216 19% 26%;
+    --primary-foreground: 210 19% 98%;
     --primary-glow: 175 70% 55%;
 
     /* Secondary: Deep surgical gray with blue undertone */
-    --secondary: 220 20% 14%;
-    --secondary-foreground: 210 20% 88%;
+    --secondary: 215 19% 34%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 220 18% 12%;
-    --muted-foreground: 215 15% 50%;
+    --muted: 215 20% 65%;
+    --muted-foreground: 222 47% 11%;
 
     /* Accent: Bright indicator cyan */
-    --accent: 185 85% 48%;
-    --accent-foreground: 222 25% 6%;
+    --accent: 210 40% 98%;
+    --accent-foreground: 215 16% 46%;
 
     /* Destructive: Blood/critical red */
-    --destructive: 0 72% 52%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 85% 97%;
 
     /* Success: Healthy tissue/safe green */
     --success: 152 60% 42%;
@@ -60,11 +64,11 @@
     --tissue-nerve: 52 75% 62%;
     --tissue-vessel: 0 65% 42%;
 
-    --border: 220 18% 18%;
-    --input: 220 18% 14%;
-    --ring: 175 70% 42%;
+    --border: 212 26% 83%;
+    --input: 212 26% 83%;
+    --ring: 216 19% 26%;
 
-    --radius: 0.625rem;
+    --radius: 0rem;
 
     /* Endoscope-specific */
     --scope-light: 48 85% 88%;
@@ -77,50 +81,83 @@
 
     /* Sidebar */
     --sidebar-background: 220 22% 8%;
-    --sidebar-foreground: 210 20% 88%;
-    --sidebar-primary: 175 70% 42%;
-    --sidebar-primary-foreground: 222 25% 6%;
-    --sidebar-accent: 220 18% 12%;
-    --sidebar-accent-foreground: 210 20% 88%;
-    --sidebar-border: 220 18% 16%;
-    --sidebar-ring: 175 70% 42%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 216 19% 26%;
+    --sidebar-primary-foreground: 210 19% 98%;
+    --sidebar-accent: 215 19% 34%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 212 26% 83%;
+    --sidebar-ring: 216 19% 26%;
 
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(175 70% 42%), hsl(185 85% 48%));
     --gradient-danger: linear-gradient(135deg, hsl(0 72% 52%), hsl(0 78% 60%));
     --gradient-surface: linear-gradient(180deg, hsl(220 22% 12%), hsl(220 22% 8%));
     --gradient-glow: radial-gradient(ellipse at center, hsl(175 70% 42% / 0.15), transparent 70%);
+    --chart-1: 217 10% 64%;
+    --chart-2: 215 20% 65%;
+    --chart-3: 215 16% 46%;
+    --chart-4: 219 8% 46%;
+    --chart-5: 215 19% 34%;
+    --sidebar: 210 40% 98%;
+    --font-sans: 'DM Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+    --font-serif: 'Crimson Pro', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+    --font-mono: 'SF Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
+    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
+    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+    --tracking-normal: 0em;
+    --spacing: 0.25rem;
   }
 
   .dark {
     /* Same as root - surgical theme is inherently dark */
-    --background: 222 25% 6%;
-    --foreground: 210 25% 94%;
-    --card: 220 22% 10%;
-    --card-foreground: 210 25% 94%;
-    --popover: 220 22% 10%;
-    --popover-foreground: 210 25% 94%;
-    --primary: 175 70% 42%;
-    --primary-foreground: 222 25% 6%;
-    --secondary: 220 20% 14%;
-    --secondary-foreground: 210 20% 88%;
-    --muted: 220 18% 12%;
-    --muted-foreground: 215 15% 50%;
-    --accent: 185 85% 48%;
-    --accent-foreground: 222 25% 6%;
-    --destructive: 0 72% 52%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 220 18% 18%;
-    --input: 220 18% 14%;
-    --ring: 175 70% 42%;
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 217 32% 17%;
+    --card-foreground: 210 40% 98%;
+    --popover: 215 24% 26%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 212 26% 83%;
+    --primary-foreground: 228 84% 4%;
+    --secondary: 215 19% 34%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 215 16% 46%;
+    --muted-foreground: 210 40% 98%;
+    --accent: 228 84% 4%;
+    --accent-foreground: 215 20% 65%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 85% 97%;
+    --border: 215 19% 34%;
+    --input: 215 19% 34%;
+    --ring: 212 26% 83%;
     --sidebar-background: 220 22% 8%;
-    --sidebar-foreground: 210 20% 88%;
-    --sidebar-primary: 175 70% 42%;
-    --sidebar-primary-foreground: 222 25% 6%;
-    --sidebar-accent: 220 18% 12%;
-    --sidebar-accent-foreground: 210 20% 88%;
-    --sidebar-border: 220 18% 16%;
-    --sidebar-ring: 175 70% 42%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 212 26% 83%;
+    --sidebar-primary-foreground: 228 84% 4%;
+    --sidebar-accent: 215 20% 65%;
+    --sidebar-accent-foreground: 228 84% 4%;
+    --sidebar-border: 215 19% 34%;
+    --sidebar-ring: 212 26% 83%;
+    --chart-1: 215 12% 83%;
+    --chart-2: 212 26% 83%;
+    --chart-3: 215 20% 65%;
+    --chart-4: 217 10% 64%;
+    --chart-5: 215 16% 46%;
+    --sidebar: 217 32% 17%;
+    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
+    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
+    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
   }
 }
 
@@ -213,7 +250,7 @@
   .gradient-border {
     position: relative;
   }
-  
+
   .gradient-border::before {
     content: '';
     position: absolute;
