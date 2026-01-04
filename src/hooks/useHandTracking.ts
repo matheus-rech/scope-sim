@@ -31,7 +31,7 @@ export function useHandTracking(): UseHandTrackingReturn {
   const animationFrameRef = useRef<number>();
 
   const [state, setState] = useState<HandTrackingState>({
-    isLoading: true,
+    isLoading: false,
     isTracking: false,
     error: null,
     dominantHand: {
@@ -171,10 +171,11 @@ export function useHandTracking(): UseHandTrackingReturn {
         throw new Error('Video element not ready');
       }
 
-      // Initialize MediaPipe Hands
+      // Initialize MediaPipe Hands - pin version to match index.html
+      const MP_HANDS_VERSION = '0.4.1675469240';
       handsRef.current = new Hands({
         locateFile: (file: string) => 
-          `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+          `https://cdn.jsdelivr.net/npm/@mediapipe/hands@${MP_HANDS_VERSION}/${file}`,
       });
 
       handsRef.current.setOptions({
@@ -213,11 +214,16 @@ export function useHandTracking(): UseHandTrackingReturn {
   const stopTracking = useCallback(() => {
     if (cameraRef.current) {
       cameraRef.current.stop();
+      cameraRef.current = null;
+    }
+    if (handsRef.current) {
+      handsRef.current.close?.();
+      handsRef.current = null;
     }
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
-    setState(prev => ({ ...prev, isTracking: false }));
+    setState(prev => ({ ...prev, isTracking: false, isLoading: false }));
   }, []);
 
   const calibrate = useCallback(() => {

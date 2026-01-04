@@ -34,29 +34,32 @@ export default function Simulator() {
     objectivesCompleted: simulator.gameState.levelState.objectives.filter(o => o.isCompleted).length,
   });
 
+  // Stable refs for simulator functions to avoid re-render loops
+  const updateFromHandRef = useRef(simulator.updateFromHand);
+  const setSecondaryHandRef = useRef(simulator.setSecondaryHandDetected);
+  updateFromHandRef.current = simulator.updateFromHand;
+  setSecondaryHandRef.current = simulator.setSecondaryHandDetected;
+
   // Update simulator with hand tracking data
   useEffect(() => {
     if (!isStarted || simulator.gameState.isPaused) return;
 
-    simulator.updateFromHand(
+    updateFromHandRef.current(
       handTracking.dominantHand,
       handTracking.wristRotation,
       handTracking.pinchStrength
     );
 
-    // Track secondary hand
-    if (handTracking.secondaryHand) {
-      simulator.setSecondaryHandDetected(true);
-    } else {
-      simulator.setSecondaryHandDetected(false);
-    }
+    // Track secondary hand - only update if value changed (handled in hook)
+    const hasSecondary = !!handTracking.secondaryHand;
+    setSecondaryHandRef.current(hasSecondary);
   }, [
     handTracking.dominantHand,
     handTracking.wristRotation,
     handTracking.pinchStrength,
     handTracking.secondaryHand,
     isStarted,
-    simulator,
+    simulator.gameState.isPaused,
   ]);
 
   // AI Coaching - triggered by state changes and periodically
@@ -117,17 +120,20 @@ export default function Simulator() {
     return () => clearInterval(interval);
   }, [isStarted, simulator.gameState.isPaused, aiCoach, simulator.gameState]);
 
-  const handleStart = useCallback(async () => {
-    await handTracking.startTracking();
+  const handleStart = useCallback(() => {
+    // Don't start tracking yet - wait for calibration screen where video element exists
     setShowInstructions(false);
     setShowScenarioSelection(true);
-  }, [handTracking]);
+  }, []);
 
   const handleScenarioSelect = useCallback((scenario: TumorScenario) => {
     setSelectedScenario(scenario);
     setShowScenarioSelection(false);
-    // Will proceed to calibration
-  }, []);
+    // Start tracking after a brief delay to ensure video element is mounted
+    setTimeout(() => {
+      handTracking.startTracking();
+    }, 100);
+  }, [handTracking]);
 
   const handleBackToInstructions = useCallback(() => {
     setShowScenarioSelection(false);
@@ -315,13 +321,7 @@ export default function Simulator() {
           </div>
 
           <div className="space-y-4">
-            {handTracking.isLoading ? (
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground animate-pulse">
-                  Loading hand tracking model...
-                </p>
-              </div>
-            ) : handTracking.error ? (
+            {handTracking.error ? (
               <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
                 <p className="text-sm text-destructive">{handTracking.error}</p>
                 <Button
@@ -330,7 +330,25 @@ export default function Simulator() {
                   onClick={handTracking.startTracking}
                   className="mt-2"
                 >
-                  Retry
+                  Retry Webcam
+                </Button>
+              </div>
+            ) : handTracking.isLoading ? (
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground animate-pulse">
+                  Loading hand tracking model...
+                </p>
+              </div>
+            ) : !handTracking.isTracking ? (
+              <div className="text-center space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Webcam not started yet
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={handTracking.startTracking}
+                >
+                  Start Webcam
                 </Button>
               </div>
             ) : (
@@ -350,7 +368,6 @@ export default function Simulator() {
                 <Button
                   size="lg"
                   onClick={handleBeginLevel}
-                  disabled={!handTracking.isTracking}
                   className="w-full"
                 >
                   {handTracking.isCalibrated ? 'Begin Surgery' : 'Begin (will auto-calibrate)'}
