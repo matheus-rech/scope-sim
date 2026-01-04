@@ -43,6 +43,8 @@ export default function HandTrackingPreview({
       {/* Video feed (hidden, used by MediaPipe) */}
       <video
         ref={videoRef}
+        width={640}
+        height={480}
         className="absolute inset-0 w-full h-full object-cover opacity-40 scale-x-[-1]"
         autoPlay
         playsInline
@@ -52,9 +54,9 @@ export default function HandTrackingPreview({
       {/* Canvas overlay for hand landmarks */}
       <canvas
         ref={canvasRef}
-        width={320}
-        height={240}
-        className="absolute inset-0 w-full h-full scale-x-[-1]"
+        width={640}
+        height={480}
+        className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
       />
       
       {/* Tool overlay on hand */}
