@@ -307,10 +307,14 @@ export function useSimulator(): UseSimulatorReturn {
   }, []);
 
   const setSecondaryHandDetected = useCallback((detected: boolean) => {
-    setGameState(prev => ({
-      ...prev,
-      tool: { ...prev.tool, secondaryHandDetected: detected },
-    }));
+    setGameState(prev => {
+      // Prevent unnecessary re-renders if value hasn't changed
+      if (prev.tool.secondaryHandDetected === detected) return prev;
+      return {
+        ...prev,
+        tool: { ...prev.tool, secondaryHandDetected: detected },
+      };
+    });
   }, []);
 
   const completeCalibration = useCallback(() => {
