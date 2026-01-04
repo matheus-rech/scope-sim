@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { EndoscopeState, ScopeAngle, AnatomicalStructure, MedialWallState, ToolType } from '@/types/simulator';
 import { getVisibleStructures, getStructureColor, isInDangerZone } from '@/data/anatomicalStructures';
 import { LEFT_ICA_CURVE, RIGHT_ICA_CURVE } from '@/lib/anatomy/ICAGeometry';
+import SmartAnatomy from './anatomy/SmartAnatomy';
 
 interface EndoscopicViewProps {
   endoscopeState: EndoscopeState;
@@ -496,25 +497,46 @@ function Scene({
     camera.lookAt(tipPos.x, tipPos.y + Math.sin(angleRad), tipPos.z + 5);
   });
 
+  // Only show Smart Anatomy when in sellar region
+  const showSmartAnatomy = depth > 65;
+
   return (
     <>
       {/* Lighting */}
       <ambientLight intensity={0.08} />
       <EndoscopeLight position={[tipPos.x, tipPos.y, tipPos.z]} />
       
-      {/* Anatomical structures */}
+      {/* Nasal corridor and sphenoid (always procedural) */}
       <NasalCorridor />
       <SphenoidSinus visible={depth > 50} />
-      <SellarRegion 
-        visible={depth > 70} 
-        heartbeatPhase={heartbeatPhase} 
-        medialWall={medialWall}
-        activeTool={activeTool}
-        isToolActive={isToolActive}
-      />
       
-      {/* Cavernous Sinus with ICA and CN VI */}
-      <CavernousSinusScene visible={depth > 65} heartbeatPhase={heartbeatPhase} />
+      {/* Smart Anatomy: Shader-based ICA and Medial Walls */}
+      {showSmartAnatomy && (
+        <SmartAnatomy
+          heartbeatPhase={heartbeatPhase}
+          medialWall={medialWall}
+          activeTool={activeTool}
+          isToolActive={isToolActive}
+          tumorRemoval={0}
+          depth={depth}
+        />
+      )}
+      
+      {/* Legacy sellar region for tumor/gland (when not using smart anatomy) */}
+      {!showSmartAnatomy && depth > 70 && (
+        <SellarRegion 
+          visible={true} 
+          heartbeatPhase={heartbeatPhase} 
+          medialWall={medialWall}
+          activeTool={activeTool}
+          isToolActive={isToolActive}
+        />
+      )}
+      
+      {/* Legacy Cavernous Sinus (fallback when SmartAnatomy disabled) */}
+      {!showSmartAnatomy && depth > 65 && (
+        <CavernousSinusScene visible={true} heartbeatPhase={heartbeatPhase} />
+      )}
       
       {/* Dynamic structures based on visibility */}
       {visibleStructures.map(structure => (
