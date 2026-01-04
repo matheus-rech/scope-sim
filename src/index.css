@@ -2,95 +2,116 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Endoscopic Surgery Simulator Design System
+   Dark surgical theme with medical precision aesthetics
+   All colors MUST be HSL */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Surgical Dark Theme - Default for medical simulation */
+    --background: 220 20% 8%;
+    --foreground: 210 20% 92%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 220 18% 12%;
+    --card-foreground: 210 20% 92%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 220 18% 12%;
+    --popover-foreground: 210 20% 92%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary: Surgical Blue-Green (sterile/medical) */
+    --primary: 180 60% 45%;
+    --primary-foreground: 220 20% 8%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary: Muted surgical gray */
+    --secondary: 220 15% 18%;
+    --secondary-foreground: 210 20% 85%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 15% 15%;
+    --muted-foreground: 215 15% 55%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent: Bright indicator cyan */
+    --accent: 185 80% 50%;
+    --accent-foreground: 220 20% 8%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Destructive: Blood/warning red */
+    --destructive: 0 75% 50%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Success: Healthy tissue green */
+    --success: 145 60% 45%;
+    --success-foreground: 220 20% 8%;
+
+    /* Warning: Caution amber */
+    --warning: 40 90% 55%;
+    --warning-foreground: 220 20% 8%;
+
+    /* Carotid danger zone */
+    --danger: 0 80% 55%;
+    --danger-foreground: 0 0% 100%;
+
+    /* Anatomical structure colors */
+    --tissue-mucosa: 350 45% 65%;
+    --tissue-bone: 40 25% 70%;
+    --tissue-tumor: 120 40% 50%;
+    --tissue-blood: 0 85% 45%;
+    --tissue-nerve: 55 70% 65%;
+    --tissue-vessel: 0 70% 40%;
+
+    --border: 220 15% 20%;
+    --input: 220 15% 18%;
+    --ring: 180 60% 45%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Endoscope-specific */
+    --scope-light: 45 80% 90%;
+    --scope-shadow: 220 30% 5%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Vitals monitor */
+    --vitals-heart: 0 80% 55%;
+    --vitals-bp: 200 70% 55%;
+    --vitals-stable: 145 60% 50%;
 
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar */
+    --sidebar-background: 220 18% 10%;
+    --sidebar-foreground: 210 20% 85%;
+    --sidebar-primary: 180 60% 45%;
+    --sidebar-primary-foreground: 220 20% 8%;
+    --sidebar-accent: 220 15% 15%;
+    --sidebar-accent-foreground: 210 20% 85%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 180 60% 45%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Same as root - surgical theme is inherently dark */
+    --background: 220 20% 8%;
+    --foreground: 210 20% 92%;
+    --card: 220 18% 12%;
+    --card-foreground: 210 20% 92%;
+    --popover: 220 18% 12%;
+    --popover-foreground: 210 20% 92%;
+    --primary: 180 60% 45%;
+    --primary-foreground: 220 20% 8%;
+    --secondary: 220 15% 18%;
+    --secondary-foreground: 210 20% 85%;
+    --muted: 220 15% 15%;
+    --muted-foreground: 215 15% 55%;
+    --accent: 185 80% 50%;
+    --accent-foreground: 220 20% 8%;
+    --destructive: 0 75% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 15% 20%;
+    --input: 220 15% 18%;
+    --ring: 180 60% 45%;
+    --sidebar-background: 220 18% 10%;
+    --sidebar-foreground: 210 20% 85%;
+    --sidebar-primary: 180 60% 45%;
+    --sidebar-primary-foreground: 220 20% 8%;
+    --sidebar-accent: 220 15% 15%;
+    --sidebar-accent-foreground: 210 20% 85%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 180 60% 45%;
   }
 }
 
@@ -101,5 +122,79 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', 'SF Pro Display', -apple-system, sans-serif;
+  }
+}
+
+@layer components {
+  /* Endoscopic view vignette effect */
+  .endoscope-vignette {
+    background: radial-gradient(
+      ellipse at center,
+      transparent 0%,
+      transparent 50%,
+      hsl(var(--scope-shadow) / 0.3) 70%,
+      hsl(var(--scope-shadow) / 0.8) 90%,
+      hsl(var(--scope-shadow)) 100%
+    );
+  }
+
+  /* Pulsing animation for vitals */
+  .pulse-vitals {
+    animation: pulse-vital 1s ease-in-out infinite;
+  }
+
+  @keyframes pulse-vital {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  /* Scope angle indicator glow */
+  .scope-indicator {
+    box-shadow: 0 0 10px hsl(var(--primary) / 0.5),
+                0 0 20px hsl(var(--primary) / 0.3);
+  }
+
+  /* Blood overlay effect */
+  .blood-overlay {
+    background: radial-gradient(
+      ellipse at center,
+      hsl(var(--tissue-blood) / 0.3) 0%,
+      hsl(var(--tissue-blood) / 0.6) 100%
+    );
+    animation: blood-pulse 0.5s ease-in-out;
+  }
+
+  @keyframes blood-pulse {
+    0% { opacity: 0; }
+    50% { opacity: 1; }
+    100% { opacity: 0.8; }
+  }
+
+  /* Fog effect for close tissue */
+  .lens-fog {
+    backdrop-filter: blur(4px);
+    background: hsl(var(--foreground) / 0.1);
+  }
+
+  /* Glow effects for active elements */
+  .glow-primary {
+    box-shadow: 0 0 15px hsl(var(--primary) / 0.4);
+  }
+
+  .glow-danger {
+    box-shadow: 0 0 15px hsl(var(--danger) / 0.5);
+    animation: danger-pulse 0.5s ease-in-out infinite;
+  }
+
+  @keyframes danger-pulse {
+    0%, 100% { box-shadow: 0 0 15px hsl(var(--danger) / 0.5); }
+    50% { box-shadow: 0 0 25px hsl(var(--danger) / 0.8); }
+  }
+}
+
+@layer utilities {
+  .text-shadow-surgical {
+    text-shadow: 0 2px 4px hsl(var(--scope-shadow) / 0.5);
   }
 }
