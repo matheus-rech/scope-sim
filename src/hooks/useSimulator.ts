@@ -21,6 +21,10 @@ import {
 import { EndoscopePhysics } from '@/lib/physics/EndoscopePhysics';
 import { ANATOMICAL_STRUCTURES, getDopplerSignal } from '@/data/anatomicalStructures';
 import { evaluateSurgicalRules, ruleToMessage, determineSurgicalStep } from '@/lib/surgical/SurgicalRuleEngine';
+import { useGameStore } from '@/store/gameStore';
+import { inputRefs, resetInputRefs, getWallGridIndex, reduceWallIntegrity, getWallResectedCount } from '@/store/inputRefs';
+import { dopplerAudio } from '@/lib/audio/DopplerAudio';
+import * as THREE from 'three';
 
 const initialDopplerState: DopplerState = {
   isActive: false,
@@ -301,16 +305,27 @@ export function useSimulator(): UseSimulatorReturn {
     }
 
     // Update Doppler state if doppler tool is active
-    const dopplerSignal = prev => {
+    const dopplerSignal = (prev: GameState) => {
       if (prev.tool.activeTool === 'doppler') {
         const signal = getDopplerSignal(endoscopeState.tipPosition);
+        
+        // Update procedural audio engine
+        const toolPos = new THREE.Vector3(
+          endoscopeState.tipPosition.x,
+          endoscopeState.tipPosition.y,
+          endoscopeState.tipPosition.z
+        );
+        const audioIntensity = dopplerAudio.updateDoppler(toolPos, pinchStrength > 0.5);
+        
         return {
           isActive: true,
-          signalStrength: signal.strength,
+          signalStrength: Math.max(signal.strength, audioIntensity),
           nearestICADistance: signal.nearestDistance,
-          audioPlaying: signal.strength > 0.2,
+          audioPlaying: signal.strength > 0.2 || audioIntensity > 0.2,
         };
       }
+      // Silence doppler when not active
+      dopplerAudio.silence();
       return prev.tool.dopplerState;
     };
 
@@ -409,6 +424,20 @@ export function useSimulator(): UseSimulatorReturn {
           // Random bleed chance
           if (Math.random() < config.bleedChance) {
             wallBleedIncrease = config.bleedAmount;
+          }
+          
+          // Haptic feedback for wall resection
+          if (navigator.vibrate) {
+            navigator.vibrate(15); // Short tactile tick
+          }
+          
+          // Also update the wall grid in inputRefs for 100-cell system
+          const gridIndex = getWallGridIndex(tipPos.x, tipPos.y);
+          if (gridIndex >= 0) {
+            const wasRemoved = reduceWallIntegrity(gridIndex, config.removalRate);
+            if (wasRemoved && navigator.vibrate) {
+              navigator.vibrate([30, 20, 30]); // Double tap for cell removal
+            }
           }
           
           newMedialWall = {
