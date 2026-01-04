@@ -31,6 +31,18 @@ export default {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        danger: {
+          DEFAULT: "hsl(var(--danger))",
+          foreground: "hsl(var(--danger-foreground))",
+        },
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
@@ -57,6 +69,26 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Anatomical tissue colors
+        tissue: {
+          mucosa: "hsl(var(--tissue-mucosa))",
+          bone: "hsl(var(--tissue-bone))",
+          tumor: "hsl(var(--tissue-tumor))",
+          blood: "hsl(var(--tissue-blood))",
+          nerve: "hsl(var(--tissue-nerve))",
+          vessel: "hsl(var(--tissue-vessel))",
+        },
+        // Vitals monitor
+        vitals: {
+          heart: "hsl(var(--vitals-heart))",
+          bp: "hsl(var(--vitals-bp))",
+          stable: "hsl(var(--vitals-stable))",
+        },
+        // Scope
+        scope: {
+          light: "hsl(var(--scope-light))",
+          shadow: "hsl(var(--scope-shadow))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -65,25 +97,26 @@ export default {
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+        "heartbeat": {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.05)" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "heartbeat": "heartbeat 1s ease-in-out infinite",
+      },
+      fontFamily: {
+        mono: ["'JetBrains Mono'", "'SF Mono'", "monospace"],
+        display: ["'Inter'", "'SF Pro Display'", "sans-serif"],
       },
     },
   },
