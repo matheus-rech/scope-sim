@@ -37,7 +37,7 @@ export default function HandTrackingPreview({
     <MedicalCard 
       variant="glass" 
       size="sm" 
-      className="relative overflow-hidden"
+      className="relative overflow-hidden w-full h-full !p-0"
       ref={containerRef}
     >
       {/* Video feed (hidden, used by MediaPipe) */}
