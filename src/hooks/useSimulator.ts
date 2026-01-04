@@ -6,6 +6,7 @@ import {
   EndoscopeState,
   ToolType,
   HandLandmarks,
+  DopplerState,
 } from '@/types/simulator';
 import {
   createLevelState,
@@ -15,7 +16,14 @@ import {
   resetLevelHints,
 } from '@/lib/levels/LevelManager';
 import { EndoscopePhysics } from '@/lib/physics/EndoscopePhysics';
-import { ANATOMICAL_STRUCTURES } from '@/data/anatomicalStructures';
+import { ANATOMICAL_STRUCTURES, getDopplerSignal } from '@/data/anatomicalStructures';
+
+const initialDopplerState: DopplerState = {
+  isActive: false,
+  signalStrength: 0,
+  nearestICADistance: 10,
+  audioPlaying: false,
+};
 
 const initialGameState: GameState = {
   currentLevel: 1,
@@ -34,6 +42,7 @@ const initialGameState: GameState = {
     isActive: false,
     secondaryHandDetected: false,
     pinchStrength: 0,
+    dopplerState: initialDopplerState,
   },
   vitals: {
     heartRate: 72,
@@ -43,6 +52,7 @@ const initialGameState: GameState = {
   attendingMessages: [],
   isPaused: false,
   isCalibrating: true,
+  complications: [],
 };
 
 interface UseSimulatorReturn {
@@ -117,11 +127,19 @@ export function useSimulator(): UseSimulatorReturn {
         isColliding: false,
         collidingStructure: null,
       },
+      tool: {
+        activeTool: 'scope',
+        isActive: false,
+        secondaryHandDetected: false,
+        pinchStrength: 0,
+        dopplerState: initialDopplerState,
+      },
       vitals: {
         heartRate: 72,
         bloodPressure: { systolic: 120, diastolic: 80 },
         isStable: true,
       },
+      complications: [],
     }));
   }, []);
 
@@ -193,6 +211,20 @@ export function useSimulator(): UseSimulatorReturn {
       }
     }
 
+    // Update Doppler state if doppler tool is active
+    const dopplerSignal = prev => {
+      if (prev.tool.activeTool === 'doppler') {
+        const signal = getDopplerSignal(endoscopeState.tipPosition);
+        return {
+          isActive: true,
+          signalStrength: signal.strength,
+          nearestICADistance: signal.nearestDistance,
+          audioPlaying: signal.strength > 0.2,
+        };
+      }
+      return prev.tool.dopplerState;
+    };
+
     // Update game state
     setGameState(prev => ({
       ...prev,
@@ -201,6 +233,7 @@ export function useSimulator(): UseSimulatorReturn {
         ...prev.tool,
         isActive: pinchStrength > 0.7,
         pinchStrength,
+        dopplerState: dopplerSignal(prev),
       },
       vitals: {
         ...prev.vitals,
@@ -213,6 +246,7 @@ export function useSimulator(): UseSimulatorReturn {
           ...prev.levelState.metrics,
           mucosalContacts: collisionCountRef.current,
           timeElapsed,
+          dopplerUsed: prev.tool.activeTool === 'doppler' || prev.levelState.metrics.dopplerUsed,
         },
       },
     }));
