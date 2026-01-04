@@ -157,11 +157,22 @@ export interface DopplerState {
 // Surgical workflow steps
 export type SurgicalStep = 'APPROACH' | 'DOPPLER' | 'INCISION' | 'RESECTION' | 'CLOSURE';
 
+// Wall interaction zone for precise tracking
+export interface WallInteractionZone {
+  superior: number;  // 0-1 integrity for superior segment
+  middle: number;    // 0-1 integrity for middle segment
+  inferior: number;  // 0-1 integrity for inferior segment (near CN VI - dangerous)
+}
+
 // Medial wall state for dynamic resection tracking
 export interface MedialWallState {
   leftIntegrity: number;  // 0.0 (resected) to 1.0 (intact)
   rightIntegrity: number;
+  leftZones: WallInteractionZone;
+  rightZones: WallInteractionZone;
   technique: 'peeling' | 'resection' | null;
+  lastToolUsed: 'curette' | 'dissector' | null;
+  interactionCount: number; // Total tool contacts
 }
 
 // Tool movement tracking for anatomical safety rules

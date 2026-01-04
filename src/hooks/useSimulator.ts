@@ -9,6 +9,7 @@ import {
   DopplerState,
   TumorScenario,
   Vector3D,
+  WallInteractionZone,
 } from '@/types/simulator';
 import {
   createLevelState,
@@ -31,7 +32,11 @@ const initialDopplerState: DopplerState = {
 const initialMedialWallState = {
   leftIntegrity: 1.0,
   rightIntegrity: 1.0,
+  leftZones: { superior: 1.0, middle: 1.0, inferior: 1.0 },
+  rightZones: { superior: 1.0, middle: 1.0, inferior: 1.0 },
   technique: null as 'peeling' | 'resection' | null,
+  lastToolUsed: null as 'curette' | 'dissector' | null,
+  interactionCount: 0,
 };
 
 const initialToolVector = {
@@ -99,6 +104,22 @@ export function useSimulator(): UseSimulatorReturn {
   const lastCoachingTimeRef = useRef<number>(0);
   const lastRuleCheckRef = useRef<number>(0);
   const prevTipPositionRef = useRef<Vector3D>({ x: 0, y: 0, z: 0 });
+
+  // Tool-specific removal rates and techniques for wall interaction
+  const WALL_INTERACTION_CONFIG = {
+    curette: {
+      removalRate: 0.04,      // Aggressive removal
+      technique: 'resection' as const,
+      bleedChance: 0.3,       // Higher bleed risk
+      bleedAmount: 5,
+    },
+    dissector: {
+      removalRate: 0.015,     // Gentle peeling
+      technique: 'peeling' as const,
+      bleedChance: 0.1,       // Lower bleed risk
+      bleedAmount: 2,
+    },
+  };
 
   // Initialize physics with anatomical structures
   useEffect(() => {
@@ -325,36 +346,114 @@ export function useSimulator(): UseSimulatorReturn {
       bloodIncrease = Math.random() > 0.7 ? 1 : 0;
     }
 
+    // Calculate medial wall interaction for curette/dissector
+    const activeTool = gameState.tool.activeTool;
+    const isWallTool = activeTool === 'curette' || activeTool === 'dissector';
+    const shouldInteractWithWall = isWallTool && pinchStrength > 0.7 && 
+      (newSurgicalStep === 'RESECTION' || newSurgicalStep === 'INCISION') &&
+      endoscopeState.insertionDepth > 70;
+
     // Update game state
-    setGameState(prev => ({
-      ...prev,
-      endoscope: endoscopeState,
-      tool: {
-        ...prev.tool,
-        isActive: pinchStrength > 0.7,
-        pinchStrength,
-        dopplerState: dopplerSignal(prev),
-      },
-      vitals: {
-        ...prev.vitals,
-        heartRate,
-        isStable,
-      },
-      levelState: {
-        ...prev.levelState,
-        metrics: {
-          ...prev.levelState.metrics,
-          mucosalContacts: collisionCountRef.current,
-          timeElapsed,
-          dopplerUsed: prev.tool.activeTool === 'doppler' || prev.levelState.metrics.dopplerUsed,
-          bloodInField: prev.bloodLevel > 20,
+    setGameState(prev => {
+      let newMedialWall = prev.medialWall;
+      let wallBleedIncrease = 0;
+
+      // Medial wall interaction logic
+      if (shouldInteractWithWall) {
+        const config = WALL_INTERACTION_CONFIG[activeTool as 'curette' | 'dissector'];
+        const tipPos = endoscopeState.tipPosition;
+        
+        // Define medial wall positions
+        const leftWallX = -0.6;
+        const rightWallX = 0.6;
+        const wallZ = 9.6;
+        const INTERACTION_RADIUS = 0.5;
+        
+        // Calculate distance to each wall
+        const leftDist = Math.sqrt(
+          Math.pow(tipPos.x - leftWallX, 2) + 
+          Math.pow(tipPos.z - wallZ, 2)
+        );
+        const rightDist = Math.sqrt(
+          Math.pow(tipPos.x - rightWallX, 2) + 
+          Math.pow(tipPos.z - wallZ, 2)
+        );
+        
+        // Determine which zone based on Y position
+        const getZone = (y: number): 'superior' | 'middle' | 'inferior' => {
+          if (y > 0.2) return 'superior';
+          if (y < -0.2) return 'inferior';
+          return 'middle';
+        };
+        
+        const zone = getZone(tipPos.y);
+        const isInteractingLeft = leftDist < INTERACTION_RADIUS;
+        const isInteractingRight = rightDist < INTERACTION_RADIUS;
+        
+        if (isInteractingLeft || isInteractingRight) {
+          const newLeftZones = { ...prev.medialWall.leftZones };
+          const newRightZones = { ...prev.medialWall.rightZones };
+          
+          // Apply removal to specific zone
+          if (isInteractingLeft && newLeftZones[zone] > 0) {
+            newLeftZones[zone] = Math.max(0, newLeftZones[zone] - config.removalRate);
+          }
+          if (isInteractingRight && newRightZones[zone] > 0) {
+            newRightZones[zone] = Math.max(0, newRightZones[zone] - config.removalRate);
+          }
+          
+          // Calculate overall integrity from zones
+          const calcIntegrity = (zones: WallInteractionZone) =>
+            (zones.superior + zones.middle + zones.inferior) / 3;
+          
+          // Random bleed chance
+          if (Math.random() < config.bleedChance) {
+            wallBleedIncrease = config.bleedAmount;
+          }
+          
+          newMedialWall = {
+            leftIntegrity: calcIntegrity(newLeftZones),
+            rightIntegrity: calcIntegrity(newRightZones),
+            leftZones: newLeftZones,
+            rightZones: newRightZones,
+            technique: config.technique,
+            lastToolUsed: activeTool as 'curette' | 'dissector',
+            interactionCount: prev.medialWall.interactionCount + 1,
+          };
+        }
+      }
+
+      return {
+        ...prev,
+        endoscope: endoscopeState,
+        tool: {
+          ...prev.tool,
+          isActive: pinchStrength > 0.7,
+          pinchStrength,
+          dopplerState: dopplerSignal(prev),
         },
-      },
-      // Dynamic surgical state updates
-      toolVector: newToolVector,
-      surgicalStep: newSurgicalStep,
-      bloodLevel: Math.min(100, prev.bloodLevel + bloodIncrease),
-    }));
+        vitals: {
+          ...prev.vitals,
+          heartRate,
+          isStable,
+        },
+        levelState: {
+          ...prev.levelState,
+          metrics: {
+            ...prev.levelState.metrics,
+            mucosalContacts: collisionCountRef.current,
+            timeElapsed,
+            dopplerUsed: prev.tool.activeTool === 'doppler' || prev.levelState.metrics.dopplerUsed,
+            bloodInField: prev.bloodLevel > 20,
+          },
+        },
+        // Dynamic surgical state updates
+        medialWall: newMedialWall,
+        toolVector: newToolVector,
+        surgicalStep: newSurgicalStep,
+        bloodLevel: Math.min(100, prev.bloodLevel + bloodIncrease + wallBleedIncrease),
+      };
+    });
 
     // Check level objectives
     updateObjectives(endoscopeState);
