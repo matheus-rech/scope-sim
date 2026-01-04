@@ -178,22 +178,35 @@ function SphenoidSinus({ visible }: { visible: boolean }) {
   );
 }
 
-// Sellar floor region with medial wall visualization
+// Sellar floor region with zone-based medial wall visualization
 function SellarRegion({ 
   visible, 
   tumorRemoval = 0, 
   heartbeatPhase,
-  medialWall 
+  medialWall,
+  activeTool,
+  isToolActive
 }: { 
   visible: boolean; 
   tumorRemoval?: number; 
   heartbeatPhase: number;
   medialWall?: MedialWallState;
+  activeTool?: ToolType;
+  isToolActive?: boolean;
 }) {
   if (!visible) return null;
   
-  const leftIntegrity = medialWall?.leftIntegrity ?? 1.0;
-  const rightIntegrity = medialWall?.rightIntegrity ?? 1.0;
+  const leftZones = medialWall?.leftZones ?? { superior: 1, middle: 1, inferior: 1 };
+  const rightZones = medialWall?.rightZones ?? { superior: 1, middle: 1, inferior: 1 };
+  
+  // Visual indication of active tool interaction
+  const isInteracting = isToolActive && (activeTool === 'curette' || activeTool === 'dissector');
+  const interactionColor = activeTool === 'curette' ? '#ff6b6b' : '#4ecdc4';
+  const baseColor = "hsl(220, 12%, 70%)";
+  
+  // Zone positions
+  const zoneHeight = 0.25;
+  const wallWidth = 0.4;
   
   return (
     <group position={[0, 0.2, 9.5]}>
@@ -207,30 +220,92 @@ function SellarRegion({
         />
       </mesh>
       
-      {/* Left Medial wall - dynamic transparency based on integrity */}
-      {leftIntegrity > 0 && (
-        <mesh position={[-0.6, 0, 0.1]} rotation={[0, Math.PI / 6, 0]}>
-          <planeGeometry args={[0.4, 0.8]} />
+      {/* LEFT MEDIAL WALL - Three zone segments */}
+      {/* Left Superior segment */}
+      {leftZones.superior > 0 && (
+        <mesh position={[-0.6, 0.25, 0.1]} rotation={[0, Math.PI / 6, 0]}>
+          <planeGeometry args={[wallWidth, zoneHeight]} />
           <meshStandardMaterial
-            color="hsl(220, 12%, 70%)"
+            color={isInteracting ? interactionColor : baseColor}
             roughness={0.4}
             side={THREE.DoubleSide}
             transparent
-            opacity={leftIntegrity * 0.9}
+            opacity={leftZones.superior * 0.9}
           />
         </mesh>
       )}
       
-      {/* Right Medial wall */}
-      {rightIntegrity > 0 && (
-        <mesh position={[0.6, 0, 0.1]} rotation={[0, -Math.PI / 6, 0]}>
-          <planeGeometry args={[0.4, 0.8]} />
+      {/* Left Middle segment */}
+      {leftZones.middle > 0 && (
+        <mesh position={[-0.6, 0, 0.1]} rotation={[0, Math.PI / 6, 0]}>
+          <planeGeometry args={[wallWidth, zoneHeight]} />
           <meshStandardMaterial
-            color="hsl(220, 12%, 70%)"
+            color={isInteracting ? interactionColor : baseColor}
             roughness={0.4}
             side={THREE.DoubleSide}
             transparent
-            opacity={rightIntegrity * 0.9}
+            opacity={leftZones.middle * 0.9}
+          />
+        </mesh>
+      )}
+      
+      {/* Left Inferior segment (danger zone - CN VI) */}
+      {leftZones.inferior > 0 && (
+        <mesh position={[-0.6, -0.25, 0.1]} rotation={[0, Math.PI / 6, 0]}>
+          <planeGeometry args={[wallWidth, zoneHeight]} />
+          <meshStandardMaterial
+            color={leftZones.inferior < 0.7 ? "#ffaa00" : baseColor}
+            roughness={0.4}
+            side={THREE.DoubleSide}
+            transparent
+            opacity={leftZones.inferior * 0.9}
+            emissive={leftZones.inferior < 0.5 ? "#ff0000" : "#000000"}
+            emissiveIntensity={leftZones.inferior < 0.5 ? 0.3 : 0}
+          />
+        </mesh>
+      )}
+      
+      {/* RIGHT MEDIAL WALL - Three zone segments */}
+      {/* Right Superior segment */}
+      {rightZones.superior > 0 && (
+        <mesh position={[0.6, 0.25, 0.1]} rotation={[0, -Math.PI / 6, 0]}>
+          <planeGeometry args={[wallWidth, zoneHeight]} />
+          <meshStandardMaterial
+            color={isInteracting ? interactionColor : baseColor}
+            roughness={0.4}
+            side={THREE.DoubleSide}
+            transparent
+            opacity={rightZones.superior * 0.9}
+          />
+        </mesh>
+      )}
+      
+      {/* Right Middle segment */}
+      {rightZones.middle > 0 && (
+        <mesh position={[0.6, 0, 0.1]} rotation={[0, -Math.PI / 6, 0]}>
+          <planeGeometry args={[wallWidth, zoneHeight]} />
+          <meshStandardMaterial
+            color={isInteracting ? interactionColor : baseColor}
+            roughness={0.4}
+            side={THREE.DoubleSide}
+            transparent
+            opacity={rightZones.middle * 0.9}
+          />
+        </mesh>
+      )}
+      
+      {/* Right Inferior segment (danger zone - CN VI) */}
+      {rightZones.inferior > 0 && (
+        <mesh position={[0.6, -0.25, 0.1]} rotation={[0, -Math.PI / 6, 0]}>
+          <planeGeometry args={[wallWidth, zoneHeight]} />
+          <meshStandardMaterial
+            color={rightZones.inferior < 0.7 ? "#ffaa00" : baseColor}
+            roughness={0.4}
+            side={THREE.DoubleSide}
+            transparent
+            opacity={rightZones.inferior * 0.9}
+            emissive={rightZones.inferior < 0.5 ? "#ff0000" : "#000000"}
+            emissiveIntensity={rightZones.inferior < 0.5 ? 0.3 : 0}
           />
         </mesh>
       )}
@@ -375,11 +450,15 @@ function EndoscopeLight({ position }: { position: [number, number, number] }) {
 function Scene({ 
   endoscopeState, 
   dopplerSignal = 0,
-  medialWall 
+  medialWall,
+  activeTool,
+  isToolActive
 }: { 
   endoscopeState: EndoscopeState; 
   dopplerSignal?: number;
   medialWall?: MedialWallState;
+  activeTool?: ToolType;
+  isToolActive?: boolean;
 }) {
   const { camera } = useThree();
   const tipPos = endoscopeState.tipPosition;
@@ -418,7 +497,13 @@ function Scene({
       {/* Anatomical structures */}
       <NasalCorridor />
       <SphenoidSinus visible={depth > 50} />
-      <SellarRegion visible={depth > 70} heartbeatPhase={heartbeatPhase} medialWall={medialWall} />
+      <SellarRegion 
+        visible={depth > 70} 
+        heartbeatPhase={heartbeatPhase} 
+        medialWall={medialWall}
+        activeTool={activeTool}
+        isToolActive={isToolActive}
+      />
       
       {/* Cavernous Sinus with ICA and CN VI */}
       <CavernousSinusScene visible={depth > 65} heartbeatPhase={heartbeatPhase} />
@@ -521,6 +606,35 @@ function ToolReticle({ tool, isActive }: { tool?: ToolType; isActive?: boolean }
       {tool === 'cautery' && isActive && (
         <div className="w-4 h-4 bg-orange-500 rounded-full shadow-lg shadow-orange-500/50 animate-pulse" />
       )}
+      
+      {/* CURETTE: Aggressive scoop indicator */}
+      {tool === 'curette' && (
+        <div className={`w-10 h-10 border-2 border-red-400 rounded-lg ${isActive ? 'scale-110' : ''} transition-transform relative`}>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-6 h-1 bg-red-400 rounded-full transform -rotate-45" />
+          </div>
+          {isActive && (
+            <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-red-400 whitespace-nowrap font-medium">
+              RESECTING
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* DISSECTOR: Gentle peel indicator */}
+      {tool === 'dissector' && (
+        <div className={`w-10 h-10 border-2 border-teal-400 rounded-full ${isActive ? 'border-dashed' : ''} relative`} 
+             style={{ animation: isActive ? 'spin 3s linear infinite' : 'none' }}>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-1 h-6 bg-teal-400 rounded-full" />
+          </div>
+          {isActive && (
+            <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-teal-400 whitespace-nowrap font-medium">
+              PEELING
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -541,7 +655,12 @@ export default function EndoscopicView({
     <div className="relative w-full h-full bg-scope-shadow rounded-full overflow-hidden">
       <Canvas shadows>
         <PerspectiveCamera makeDefault fov={90} near={0.1} far={100} />
-        <Scene endoscopeState={endoscopeState} medialWall={medialWall} />
+        <Scene 
+          endoscopeState={endoscopeState} 
+          medialWall={medialWall}
+          activeTool={activeTool}
+          isToolActive={isToolActive}
+        />
       </Canvas>
       
       {/* Overlays */}

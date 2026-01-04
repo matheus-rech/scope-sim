@@ -37,24 +37,62 @@ export const evaluateSurgicalRules = (
     }
   }
   
-  // RULE 3: FA/NFA STRATEGY ENFORCEMENT
+  // RULE 3: FA/NFA STRATEGY ENFORCEMENT - Tool Selection Validation
   if (gameState.surgicalStep === 'RESECTION' && scenario) {
     const isNFA = scenario.type === 'non-functioning';
+    const isFA = scenario.type === 'functioning';
+    const lastTool = gameState.medialWall.lastToolUsed;
     const wallBeingResected = 
       gameState.medialWall.leftIntegrity < 0.5 || 
       gameState.medialWall.rightIntegrity < 0.5;
     
-    // NFA: Peeling preferred
-    if (isNFA && wallBeingResected && gameState.medialWall.technique === 'resection') {
+    // NFA + Curette = Warning (too aggressive)
+    if (isNFA && lastTool === 'curette' && gameState.medialWall.technique === 'resection') {
       return {
-        ruleId: 'nfa_strategy',
-        message: "WARNING: This is an NFA case. Consider peeling rather than resecting - lower risk of CSF leak.",
+        ruleId: 'nfa_curette_warning',
+        message: "CAUTION: Using curette on NFA may risk CSF leak. Dissector preferred for gentle peeling.",
         type: 'warning'
       };
     }
     
-    // FA: Aggressive resection for biochemical cure
-    if (scenario.type === 'functioning') {
+    // FA + Dissector only (not aggressive enough for cure) - hint, not warning
+    if (isFA && lastTool === 'dissector' && gameState.medialWall.leftIntegrity > 0.3 && gameState.medialWall.rightIntegrity > 0.3) {
+      return {
+        ruleId: 'fa_dissector_hint',
+        message: "TIP: For biochemical cure in FA, consider curette for more aggressive medial wall resection.",
+        type: 'info'
+      };
+    }
+    
+    // Inferior zone danger (CN VI proximity)
+    const leftInferior = gameState.medialWall.leftZones?.inferior ?? 1;
+    const rightInferior = gameState.medialWall.rightZones?.inferior ?? 1;
+    if (leftInferior < 0.5 || rightInferior < 0.5) {
+      return {
+        ruleId: 'cn6_zone_warning',
+        message: "WARNING: Working in inferior zone near CN VI. Proceed with extreme caution!",
+        type: 'warning'
+      };
+    }
+    
+    // NFA with proper peeling technique - success
+    if (isNFA && gameState.medialWall.technique === 'peeling' && wallBeingResected) {
+      return {
+        ruleId: 'nfa_peel_success',
+        message: "Excellent peeling technique. Tumor exposure with minimal dural trauma.",
+        type: 'success'
+      };
+    }
+    
+    // FA: Complete resection success
+    if (isFA && gameState.medialWall.technique === 'resection') {
+      if (gameState.medialWall.leftIntegrity < 0.1 && gameState.medialWall.rightIntegrity < 0.1) {
+        return {
+          ruleId: 'fa_resect_success',
+          message: "Complete medial wall resection achieved. Maximum tumor access for biochemical cure.",
+          type: 'success'
+        };
+      }
       if (gameState.medialWall.leftIntegrity < 0.1 || gameState.medialWall.rightIntegrity < 0.1) {
         return {
           ruleId: 'fa_success',

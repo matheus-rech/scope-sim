@@ -7,12 +7,12 @@ interface ToolSelectorProps {
   disabled?: boolean;
 }
 
-const TOOLS: { id: ToolType; icon: string; label: string; color: string; critical?: boolean }[] = [
+const TOOLS: { id: ToolType; icon: string; label: string; color: string; critical?: boolean; technique?: string }[] = [
   { id: 'scope', icon: '🔭', label: 'Scope', color: 'bg-primary' },
   { id: 'doppler', icon: '📡', label: 'Doppler', color: 'bg-warning', critical: true },
   { id: 'drill', icon: '🔧', label: 'Drill', color: 'bg-accent' },
-  { id: 'dissector', icon: '🔬', label: 'Dissector', color: 'bg-secondary' },
-  { id: 'curette', icon: '🥄', label: 'Curette', color: 'bg-secondary' },
+  { id: 'dissector', icon: '🔬', label: 'Dissector', color: 'bg-teal-600', technique: 'Peel' },
+  { id: 'curette', icon: '🥄', label: 'Curette', color: 'bg-red-600', technique: 'Resect' },
   { id: 'suction', icon: '💨', label: 'Suction', color: 'bg-accent' },
   { id: 'cautery', icon: '⚡', label: 'Cautery', color: 'bg-destructive' },
   { id: 'irrigation', icon: '💧', label: 'Irrigation', color: 'bg-vitals-bp' },
@@ -51,6 +51,11 @@ export default function ToolSelector({
           >
             {tool.critical && toolState.activeTool !== tool.id && (
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-warning rounded-full animate-pulse" />
+            )}
+            {tool.technique && (
+              <span className={`absolute -top-1 -left-1 text-[8px] px-1 rounded ${tool.id === 'curette' ? 'bg-red-500' : 'bg-teal-500'} text-white`}>
+                {tool.technique}
+              </span>
             )}
             <span className="text-lg">{tool.icon}</span>
             <span className="text-[10px] font-medium">{tool.label}</span>
