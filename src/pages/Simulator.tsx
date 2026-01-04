@@ -9,6 +9,7 @@ import AttendingCoach from '@/components/simulator/AttendingCoach';
 import LevelInfoPanel from '@/components/simulator/LevelInfoPanel';
 import ToolSelector from '@/components/simulator/ToolSelector';
 import DopplerFeedback from '@/components/simulator/DopplerFeedback';
+import PostOpReport from '@/components/simulator/PostOpReport';
 import { Button } from '@/components/ui/button';
 import { LevelId, AttendingMessage } from '@/types/simulator';
 import { cn } from '@/lib/utils';
@@ -19,6 +20,7 @@ export default function Simulator() {
   const aiCoach = useAICoach({ minInterval: 20000, enabled: true });
   const [isStarted, setIsStarted] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
+  const [showPostOpReport, setShowPostOpReport] = useState(false);
   const [aiMessages, setAiMessages] = useState<AttendingMessage[]>([]);
   
   // Track previous state for detecting changes
@@ -137,8 +139,40 @@ export default function Simulator() {
   const handleLevelSelect = useCallback((level: LevelId) => {
     simulator.startLevel(level);
     setIsStarted(true);
+    setShowPostOpReport(false);
     setAiMessages([]); // Clear messages on level change
   }, [simulator]);
+
+  const handleLevelComplete = useCallback(() => {
+    setShowPostOpReport(true);
+  }, []);
+
+  const handleContinueToNextLevel = useCallback(() => {
+    const nextLevel = Math.min(5, simulator.gameState.currentLevel + 1) as LevelId;
+    simulator.startLevel(nextLevel);
+    setShowPostOpReport(false);
+    setAiMessages([]);
+  }, [simulator]);
+
+  const handleRestartLevel = useCallback(() => {
+    simulator.resetGame();
+    setShowPostOpReport(false);
+    setAiMessages([]);
+  }, [simulator]);
+
+  // Post-Operative Report Screen
+  if (showPostOpReport) {
+    return (
+      <PostOpReport
+        levelState={simulator.gameState.levelState}
+        totalTime={simulator.timeElapsed}
+        complications={simulator.gameState.complications}
+        scenario={simulator.gameState.scenario}
+        onContinue={handleContinueToNextLevel}
+        onRestart={handleRestartLevel}
+      />
+    );
+  }
 
   // Instructions/Welcome Screen
   if (showInstructions) {
@@ -330,6 +364,9 @@ export default function Simulator() {
             )}
             <Button size="sm" variant="ghost" onClick={simulator.resetGame}>
               Reset
+            </Button>
+            <Button size="sm" variant="secondary" onClick={handleLevelComplete}>
+              End Level
             </Button>
           </div>
         </header>
