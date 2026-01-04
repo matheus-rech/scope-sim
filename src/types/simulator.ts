@@ -154,6 +154,23 @@ export interface DopplerState {
   audioPlaying: boolean;
 }
 
+// Surgical workflow steps
+export type SurgicalStep = 'APPROACH' | 'DOPPLER' | 'INCISION' | 'RESECTION' | 'CLOSURE';
+
+// Medial wall state for dynamic resection tracking
+export interface MedialWallState {
+  leftIntegrity: number;  // 0.0 (resected) to 1.0 (intact)
+  rightIntegrity: number;
+  technique: 'peeling' | 'resection' | null;
+}
+
+// Tool movement tracking for anatomical safety rules
+export interface ToolVector {
+  direction: Vector3D;
+  magnitude: number;
+  verticalComponent: number; // Y-axis for "go superior" rule
+}
+
 // Level system types
 export type LevelId = 1 | 2 | 3 | 4 | 5;
 
@@ -239,6 +256,11 @@ export interface GameState {
   isCalibrating: boolean;
   complications: Complication[];
   scenario?: TumorScenario;
+  // Dynamic surgical state
+  surgicalStep: SurgicalStep;
+  medialWall: MedialWallState;
+  toolVector: ToolVector;
+  bloodLevel: number; // 0-100 for dynamic blood overlay
 }
 
 // Hand gesture types

@@ -421,7 +421,11 @@ export default function Simulator() {
             <EndoscopicView
               endoscopeState={simulator.gameState.endoscope}
               showBloodOverlay={simulator.gameState.levelState.metrics.bloodInField}
+              bloodLevel={simulator.gameState.bloodLevel}
               showFog={simulator.gameState.endoscope.insertionDepth > 95}
+              medialWall={simulator.gameState.medialWall}
+              activeTool={simulator.gameState.tool.activeTool}
+              isToolActive={simulator.gameState.tool.isActive}
             />
           </div>
         </main>

@@ -8,6 +8,7 @@ import {
   HandLandmarks,
   DopplerState,
   TumorScenario,
+  Vector3D,
 } from '@/types/simulator';
 import {
   createLevelState,
@@ -18,12 +19,25 @@ import {
 } from '@/lib/levels/LevelManager';
 import { EndoscopePhysics } from '@/lib/physics/EndoscopePhysics';
 import { ANATOMICAL_STRUCTURES, getDopplerSignal } from '@/data/anatomicalStructures';
+import { evaluateSurgicalRules, ruleToMessage, determineSurgicalStep } from '@/lib/surgical/SurgicalRuleEngine';
 
 const initialDopplerState: DopplerState = {
   isActive: false,
   signalStrength: 0,
   nearestICADistance: 10,
   audioPlaying: false,
+};
+
+const initialMedialWallState = {
+  leftIntegrity: 1.0,
+  rightIntegrity: 1.0,
+  technique: null as 'peeling' | 'resection' | null,
+};
+
+const initialToolVector = {
+  direction: { x: 0, y: 0, z: 0 },
+  magnitude: 0,
+  verticalComponent: 0,
 };
 
 const initialGameState: GameState = {
@@ -54,6 +68,11 @@ const initialGameState: GameState = {
   isPaused: false,
   isCalibrating: true,
   complications: [],
+  // Dynamic surgical state
+  surgicalStep: 'APPROACH',
+  medialWall: initialMedialWallState,
+  toolVector: initialToolVector,
+  bloodLevel: 0,
 };
 
 interface UseSimulatorReturn {
@@ -78,6 +97,8 @@ export function useSimulator(): UseSimulatorReturn {
   const startTimeRef = useRef<number>(Date.now());
   const [timeElapsed, setTimeElapsed] = useState(0);
   const lastCoachingTimeRef = useRef<number>(0);
+  const lastRuleCheckRef = useRef<number>(0);
+  const prevTipPositionRef = useRef<Vector3D>({ x: 0, y: 0, z: 0 });
 
   // Initialize physics with anatomical structures
   useEffect(() => {
@@ -94,6 +115,42 @@ export function useSimulator(): UseSimulatorReturn {
 
     return () => clearInterval(interval);
   }, [gameState.isPaused, gameState.isCalibrating]);
+
+  // Blood level management - suction reduces blood
+  useEffect(() => {
+    if (gameState.isPaused || gameState.isCalibrating) return;
+    
+    let interval: ReturnType<typeof setInterval> | null = null;
+    
+    if (gameState.tool.isActive && gameState.tool.activeTool === 'suction') {
+      interval = setInterval(() => {
+        setGameState(prev => ({
+          ...prev,
+          bloodLevel: Math.max(0, prev.bloodLevel - 1.5)
+        }));
+      }, 100);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [gameState.tool.isActive, gameState.tool.activeTool, gameState.isPaused, gameState.isCalibrating]);
+
+  // Surgical rule engine check
+  useEffect(() => {
+    if (gameState.isPaused || gameState.isCalibrating) return;
+    
+    const now = Date.now();
+    // Check rules max once per 2 seconds to avoid spam
+    if (now - lastRuleCheckRef.current < 2000) return;
+    
+    const ruleResult = evaluateSurgicalRules(gameState, gameState.scenario);
+    
+    if (ruleResult) {
+      addMessage(ruleToMessage(ruleResult));
+      lastRuleCheckRef.current = now;
+    }
+  }, [gameState.toolVector, gameState.medialWall, gameState.surgicalStep, gameState.bloodLevel, gameState.isPaused, gameState.isCalibrating, gameState.scenario]);
 
   const addMessage = useCallback((message: AttendingMessage) => {
     setGameState(prev => ({
@@ -146,6 +203,11 @@ export function useSimulator(): UseSimulatorReturn {
         isStable: true,
       },
       complications: [],
+      // Reset dynamic surgical state
+      surgicalStep: 'APPROACH',
+      medialWall: initialMedialWallState,
+      toolVector: initialToolVector,
+      bloodLevel: 0,
     }));
   }, []);
 
@@ -231,6 +293,38 @@ export function useSimulator(): UseSimulatorReturn {
       return prev.tool.dopplerState;
     };
 
+    // Calculate tool vector from movement
+    const tipPos = endoscopeState.tipPosition;
+    const prevPos = prevTipPositionRef.current;
+    const dx = tipPos.x - prevPos.x;
+    const dy = tipPos.y - prevPos.y;
+    const dz = tipPos.z - prevPos.z;
+    const magnitude = Math.sqrt(dx*dx + dy*dy + dz*dz);
+    
+    const newToolVector = magnitude > 0.001 ? {
+      direction: { x: dx/magnitude, y: dy/magnitude, z: dz/magnitude },
+      magnitude,
+      verticalComponent: dy / (magnitude || 1)
+    } : prevTipPositionRef.current ? gameState.toolVector : initialToolVector;
+    
+    prevTipPositionRef.current = { ...tipPos };
+
+    // Update surgical step based on current state
+    const newSurgicalStep = determineSurgicalStep({
+      ...gameState,
+      endoscope: endoscopeState,
+    });
+
+    // Handle collision-induced bleeding
+    let bloodIncrease = 0;
+    if (endoscopeState.isColliding && pinchStrength > 0.7) {
+      // Active tool touching tissue causes more bleeding
+      bloodIncrease = gameState.tool.activeTool === 'drill' ? 5 : 2;
+    } else if (endoscopeState.isColliding) {
+      // Passive contact causes minor bleeding
+      bloodIncrease = Math.random() > 0.7 ? 1 : 0;
+    }
+
     // Update game state
     setGameState(prev => ({
       ...prev,
@@ -253,8 +347,13 @@ export function useSimulator(): UseSimulatorReturn {
           mucosalContacts: collisionCountRef.current,
           timeElapsed,
           dopplerUsed: prev.tool.activeTool === 'doppler' || prev.levelState.metrics.dopplerUsed,
+          bloodInField: prev.bloodLevel > 20,
         },
       },
+      // Dynamic surgical state updates
+      toolVector: newToolVector,
+      surgicalStep: newSurgicalStep,
+      bloodLevel: Math.min(100, prev.bloodLevel + bloodIncrease),
     }));
 
     // Check level objectives
