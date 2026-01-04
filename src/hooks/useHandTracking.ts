@@ -1,7 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { HandLandmarks, GestureType } from '@/types/simulator';
 import { handMapper, RawHandData } from '@/lib/tracking/HandMapper';
-import '@/types/mediapipe'; // Import type declarations
 
 interface HandTrackingState {
   isLoading: boolean;
