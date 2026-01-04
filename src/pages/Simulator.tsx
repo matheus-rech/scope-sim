@@ -541,6 +541,12 @@ export default function Simulator() {
               gesture={handTracking.dominantGesture}
               pinchStrength={handTracking.pinchStrength}
               onCalibrate={handTracking.calibrate}
+              activeTool={simulator.gameState.tool.activeTool}
+              isToolActive={simulator.gameState.tool.isActive}
+              handPosition={handTracking.isTracking ? {
+                x: handTracking.dominantHand.palmCenter.x,
+                y: handTracking.dominantHand.palmCenter.y,
+              } : null}
             />
           </div>
         </div>
