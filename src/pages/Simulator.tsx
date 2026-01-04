@@ -440,9 +440,9 @@ export default function Simulator() {
                 {[
                   { id: 1, name: 'Nasal Navigation', icon: <Navigation className="w-3.5 h-3.5" />, color: 'bg-primary/20 text-primary border-primary/30' },
                   { id: 2, name: 'Sphenoidotomy', icon: <Hammer className="w-3.5 h-3.5" />, color: 'bg-warning/20 text-warning border-warning/30' },
-                  { id: 3, name: 'Sellar Exposure', icon: <Target className="w-3.5 h-3.5" />, color: 'bg-accent/20 text-accent border-accent/30' },
+                  { id: 3, name: 'Sellar Exposure', icon: <Target className="w-3.5 h-3.5" />, color: 'bg-vitals-bp/20 text-vitals-bp border-vitals-bp/30' },
                   { id: 4, name: 'Tumor Resection', icon: <Brain className="w-3.5 h-3.5" />, color: 'bg-success/20 text-success border-success/30' },
-                  { id: 5, name: 'Reconstruction', icon: <Wrench className="w-3.5 h-3.5" />, color: 'bg-vitals-bp/20 text-vitals-bp border-vitals-bp/30' },
+                  { id: 5, name: 'Reconstruction', icon: <Wrench className="w-3.5 h-3.5" />, color: 'bg-secondary/30 text-secondary border-secondary/40' },
                 ].map(level => (
                   <span
                     key={level.id}
