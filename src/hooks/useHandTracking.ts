@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { HandLandmarks, GestureType } from '@/types/simulator';
 import { handMapper, RawHandData } from '@/lib/tracking/HandMapper';
+import '@/types/mediapipe'; // Import type declarations
 
 interface HandTrackingState {
   isLoading: boolean;
@@ -159,9 +160,13 @@ export function useHandTracking(): UseHandTrackingReturn {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
 
-      // Dynamically import MediaPipe
-      const { Hands } = await import('@mediapipe/hands');
-      const { Camera } = await import('@mediapipe/camera_utils');
+      // Use globally loaded MediaPipe (from CDN script tags in index.html)
+      const Hands = window.Hands;
+      const Camera = window.Camera;
+
+      if (!Hands || !Camera) {
+        throw new Error('MediaPipe libraries not loaded. Please refresh the page.');
+      }
 
       if (!videoRef.current) {
         throw new Error('Video element not ready');
@@ -182,8 +187,8 @@ export function useHandTracking(): UseHandTrackingReturn {
 
       handsRef.current.onResults(onResults);
 
-      // Initialize camera
-      cameraRef.current = new Camera(videoRef.current, {
+      // Initialize camera using global Camera
+      cameraRef.current = new window.Camera(videoRef.current, {
         onFrame: async () => {
           if (handsRef.current && videoRef.current) {
             await handsRef.current.send({ image: videoRef.current });
