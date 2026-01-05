@@ -192,6 +192,26 @@ export function useHandTracking(): UseHandTrackingReturn {
         throw new Error('Video element not ready');
       }
 
+      // Wait for video element to be ready using requestAnimationFrame
+      // This ensures the DOM is fully painted before initializing camera
+      await new Promise<void>((resolve, reject) => {
+        let attempts = 0;
+        const maxAttempts = 50; // 50 * 50ms = 2.5 seconds max wait
+        
+        const checkReady = () => {
+          attempts++;
+          if (videoRef.current && videoRef.current.offsetWidth > 0) {
+            resolve();
+          } else if (attempts >= maxAttempts) {
+            reject(new Error('Video element not ready after timeout'));
+          } else {
+            requestAnimationFrame(checkReady);
+          }
+        };
+        
+        requestAnimationFrame(checkReady);
+      });
+
       // Initialize MediaPipe Hands - pin version to match index.html
       const MP_HANDS_VERSION = '0.4.1675469240';
       handsRef.current = new Hands({

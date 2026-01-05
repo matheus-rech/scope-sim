@@ -700,7 +700,7 @@ export default function Simulator() {
           
           {/* ICA Mapping Overlay - appears when Doppler is active */}
           {simulator.gameState.tool.activeTool === 'doppler' && (
-            <div className="absolute bottom-8 left-8">
+            <div className="absolute bottom-8 left-8 z-10">
               <ICAMappingOverlay
                 isActive={simulator.gameState.tool.isActive}
                 probePosition={simulator.gameState.endoscope.tipPosition}
@@ -779,9 +779,9 @@ export default function Simulator() {
         </div>
       </aside>
 
-      {/* Pause Overlay */}
+      {/* Pause Overlay - highest z-index to cover everything */}
       {simulator.gameState.isPaused && (
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-[100]">
           <div className="bg-card border border-border rounded-lg p-8 text-center space-y-4">
             <h2 className="text-2xl font-bold text-foreground">Paused</h2>
             <p className="text-muted-foreground">
