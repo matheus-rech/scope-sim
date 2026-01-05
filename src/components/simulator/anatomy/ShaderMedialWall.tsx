@@ -1,7 +1,7 @@
 import { useRef, useEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { inputRefs } from '@/store/inputRefs';
+import { inputRefs } from '@/store';
 import {
   wallVertexShader,
   wallFragmentShader,

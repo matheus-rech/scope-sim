@@ -21,8 +21,7 @@ import {
 import { EndoscopePhysics } from '@/lib/physics/EndoscopePhysics';
 import { ANATOMICAL_STRUCTURES, getDopplerSignal } from '@/data/anatomicalStructures';
 import { evaluateSurgicalRules, ruleToMessage, determineSurgicalStep } from '@/lib/surgical/SurgicalRuleEngine';
-import { useGameStore } from '@/store/gameStore';
-import { inputRefs, resetInputRefs, getWallGridIndex, reduceWallIntegrity, getWallResectedCount, addDopplerSample } from '@/store/inputRefs';
+import { useGameStore, inputRefs, resetInputRefs, getWallGridIndex, reduceWallIntegrity, getWallResectedCount, addDopplerSample } from '@/store';
 import { dopplerAudio } from '@/lib/audio/DopplerAudio';
 import { hapticEngine } from '@/lib/haptic/HapticFeedback';
 import * as THREE from 'three';

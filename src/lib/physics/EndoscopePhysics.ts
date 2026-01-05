@@ -7,7 +7,7 @@ import {
   AnatomicalStructure,
   DEFAULT_CONFIG,
 } from '@/types/simulator';
-import { inputRefs } from '@/store/inputRefs';
+import { inputRefs } from '@/store';
 
 // Dual pivot points for binasal approach (nostrils)
 export const PIVOT_LEFT: Vector3D = { x: -0.8, y: -2.5, z: 5.0 };

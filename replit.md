@@ -18,7 +18,7 @@ Preferred communication style: Simple, everyday language.
 - **UI Components**: shadcn/ui component library built on Radix UI primitives
 - **Styling**: Tailwind CSS with custom medical/surgical theme using HSL CSS variables
 - **State Management**: Zustand for global game state, React hooks for local state
-- **Hand Tracking**: MediaPipe Hands loaded via CDN for webcam-based gesture recognition
+- **Hand Tracking**: MediaPipe Tasks Vision (@mediapipe/tasks-vision) with FilesetResolver and HandLandmarker for webcam-based gesture recognition
 
 ### Backend Architecture
 - **Server**: Express.js running on port 5001
@@ -28,15 +28,20 @@ Preferred communication style: Simple, everyday language.
 
 ### Key Design Patterns
 
-**Mutable Refs for Physics (60 FPS)**
-- `src/store/inputRefs.ts` contains non-reactive mutable refs for real-time physics
-- Hand tracking updates these directly without React re-renders
-- Physics loop reads from refs, writes results back for rendering
+**Unified Store Architecture**
+- `src/store.ts` combines mutable refs (inputRefs) and Zustand reactive state
+- inputRefs: Direct memory access for 60 FPS physics, updated without React re-renders
+- useGameStore: Zustand-based reactive state for UI components
+- Clear separation between physics data and UI-reactive state in a single file
 
-**Reactive Store for UI**
-- `src/store/gameStore.ts` uses Zustand for UI state that triggers re-renders
-- Level state, tool selection, complications, and messages live here
-- Clear separation between 60fps physics data and UI-reactive state
+**Anatomy & Collision System**
+- `src/anatomy.ts` defines ICA path arrays and collision detection utilities
+- Provides getNearestICADistance() for Doppler and safety checks
+- ICA_PARAMS defines danger/warning radii for proximity alerts
+
+**Physics Engines**
+- `src/engines/physics.ts` handles collision detection and tool interactions
+- `src/engines/audio.ts` manages Doppler audio feedback based on ICA proximity
 
 **Level-Based Progression**
 - Five surgical levels with distinct objectives and tool requirements
@@ -55,6 +60,17 @@ Preferred communication style: Simple, everyday language.
 4. useFrame physics loop reads refs → Updates scope/tool positions
 5. Collision detection runs → Updates gameStore if needed
 6. React components render from gameStore state
+
+## Recent Changes
+
+### Migration Complete (January 2026)
+- Unified store: Combined `inputRefs` and `gameStore` into single `src/store.ts`
+- Created `src/anatomy.ts` with ICA paths and collision detection
+- Created engine modules: `src/engines/audio.ts` and `src/engines/physics.ts`
+- Migrated hand tracking to @mediapipe/tasks-vision (FilesetResolver + HandLandmarker)
+- Created `src/components/HandInput.tsx` and backward-compatible `src/hooks/useHandTracking.ts`
+- Updated SmartAnatomy.tsx to use new structure
+- Archived old files in `src/_archive/`
 
 ## External Dependencies
 
@@ -79,7 +95,7 @@ Preferred communication style: Simple, everyday language.
   - Migrations stored in `/migrations` directory
 
 ### Key NPM Dependencies
-- `@mediapipe/hands` + `@mediapipe/camera_utils`: Hand tracking (loaded via CDN)
+- `@mediapipe/tasks-vision`: Hand tracking with FilesetResolver and HandLandmarker
 - `@react-three/fiber` + `@react-three/drei`: 3D rendering
 - `@supabase/supabase-js`: Supabase client
 - `drizzle-orm` + `drizzle-kit`: Database ORM and migrations
