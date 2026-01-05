@@ -1,11 +1,10 @@
 import { useState, useCallback, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { AttendingMessage, GameState } from '@/types/simulator';
 
 type CoachingTrigger = 'periodic' | 'collision' | 'tool_change' | 'complication' | 'milestone' | 'doppler_warning';
 
 interface UseAICoachOptions {
-  minInterval?: number; // Minimum ms between AI calls
+  minInterval?: number;
   enabled?: boolean;
 }
 
@@ -22,13 +21,11 @@ export function useAICoach(options: UseAICoachOptions = {}) {
   ): Promise<AttendingMessage | null> => {
     if (!enabled) return null;
     
-    // Rate limiting - don't call too frequently
     const now = Date.now();
     if (trigger === 'periodic' && now - lastCallRef.current < minInterval) {
       return null;
     }
     
-    // Prevent duplicate concurrent calls
     if (pendingRef.current && trigger === 'periodic') {
       return null;
     }
@@ -59,18 +56,22 @@ export function useAICoach(options: UseAICoachOptions = {}) {
         totalObjectives: gameState.levelState.objectives.length,
       };
 
-      const { data, error } = await supabase.functions.invoke('surgical-coach', {
-        body: { context, trigger }
+      const response = await fetch('/api/surgical-coach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context, trigger })
       });
 
-      if (error) {
-        console.error('AI Coach error:', error);
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('AI Coach error:', data.error);
         return null;
       }
 
       lastCallRef.current = now;
 
-      if (data?.message) {
+      if (data.message) {
         const message: AttendingMessage = {
           id: `ai-${Date.now()}`,
           text: data.message,
@@ -80,8 +81,7 @@ export function useAICoach(options: UseAICoachOptions = {}) {
         return message;
       }
 
-      // Use fallback message if provided
-      if (data?.fallbackMessage) {
+      if (data.fallbackMessage) {
         return {
           id: `fallback-${Date.now()}`,
           text: data.fallbackMessage,

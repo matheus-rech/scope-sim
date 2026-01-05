@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { ToolType } from '@/types/simulator';
-import { supabase } from '@/integrations/supabase/client';
 import { TOOL_ICON_PROMPTS } from '@/lib/assets/toolIconPrompts';
 
 interface ToolIconData {
@@ -27,7 +26,6 @@ const TOOL_TYPES: ToolType[] = ['scope', 'doppler', 'drill', 'dissector', 'curet
 
 const CACHE_KEY = 'neuroendosim_tool_icons_v1';
 
-// Helper to get cached icons from localStorage
 function getCachedIcons(): Record<string, string> {
   try {
     const cached = localStorage.getItem(CACHE_KEY);
@@ -40,7 +38,6 @@ function getCachedIcons(): Record<string, string> {
   return {};
 }
 
-// Helper to save icons to localStorage
 function saveCachedIcons(icons: Record<string, string>) {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify(icons));
@@ -71,12 +68,10 @@ export function ToolIconsProvider({ children }: { children: React.ReactNode }) {
   const generationQueueRef = useRef<Set<ToolType>>(new Set());
 
   const generateIcon = useCallback(async (tool: ToolType): Promise<string | null> => {
-    // Check if already generating
     if (generationQueueRef.current.has(tool)) {
       return icons[tool]?.imageUrl || null;
     }
     
-    // Check cache first
     if (icons[tool]?.imageUrl) {
       return icons[tool].imageUrl;
     }
@@ -91,30 +86,28 @@ export function ToolIconsProvider({ children }: { children: React.ReactNode }) {
     try {
       const promptData = TOOL_ICON_PROMPTS[tool];
       
-      const { data, error } = await supabase.functions.invoke('generate-image', {
-        body: {
+      const response = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           prompt: promptData.prompt,
           category: 'icon',
-        },
+        }),
       });
 
-      if (error) {
-        throw new Error(error.message);
-      }
+      const data = await response.json();
 
-      if (!data?.success || !data?.imageUrl) {
-        throw new Error(data?.error || 'Failed to generate icon');
+      if (!response.ok || !data.success || !data.imageUrl) {
+        throw new Error(data.error || 'Failed to generate icon');
       }
 
       const imageUrl = data.imageUrl;
 
-      // Update state
       setIcons(prev => ({
         ...prev,
         [tool]: { imageUrl, isLoading: false, error: null },
       }));
 
-      // Update cache
       const cached = getCachedIcons();
       cached[tool] = imageUrl;
       saveCachedIcons(cached);
@@ -141,11 +134,9 @@ export function ToolIconsProvider({ children }: { children: React.ReactNode }) {
   const generateAllIcons = useCallback(async () => {
     setIsGeneratingAll(true);
     
-    // Generate icons sequentially to avoid rate limiting
     for (const tool of TOOL_TYPES) {
       if (!icons[tool]?.imageUrl) {
         await generateIcon(tool);
-        // Add small delay between generations to avoid rate limits
         await new Promise(resolve => setTimeout(resolve, 1500));
       }
     }
@@ -157,13 +148,10 @@ export function ToolIconsProvider({ children }: { children: React.ReactNode }) {
     return icons[tool] || defaultIconData;
   }, [icons]);
 
-  // Auto-generate icons that aren't cached on mount
   useEffect(() => {
     const uncachedTools = TOOL_TYPES.filter(tool => !icons[tool]?.imageUrl);
     
     if (uncachedTools.length > 0 && uncachedTools.length < TOOL_TYPES.length) {
-      // Only auto-generate if some are already cached (user has started the process)
-      // Don't auto-generate all on first visit
     }
   }, []);
 

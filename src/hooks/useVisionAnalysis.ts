@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 
 type AnalysisType = 'anatomy_identification' | 'safety_check' | 'progress_assessment';
 
@@ -27,21 +26,18 @@ export function useVisionAnalysis() {
     setError(null);
     
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('vision-analysis', {
-        body: { imageBase64, analysisType }
+      const response = await fetch('/api/vision-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64, analysisType })
       });
 
-      if (fnError) {
-        console.error('Vision analysis function error:', fnError);
-        setError(fnError.message);
-        return null;
-      }
+      const data = await response.json();
 
-      if (data?.error) {
-        console.warn('Vision analysis returned error:', data.error);
+      if (!response.ok) {
+        console.error('Vision analysis error:', data.error);
         setError(data.error);
         
-        // Return fallback if available
         if (data.fallbackAnalysis) {
           const fallbackResult: VisionAnalysisResult = {
             analysis: data.fallbackAnalysis,

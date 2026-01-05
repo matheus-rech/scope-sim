@@ -1,5 +1,4 @@
 import { useState, useCallback, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 
 type ImageCategory = 'icon' | 'diagram' | 'background' | 'preview' | 'avatar';
 
@@ -23,7 +22,6 @@ export function useImageGeneration() {
     prompt: string,
     category: ImageCategory
   ): Promise<GeneratedImage | null> => {
-    // Check cache first
     const cacheKey = `${category}:${prompt}`;
     if (cacheRef.current[cacheKey]) {
       return cacheRef.current[cacheKey];
@@ -33,19 +31,17 @@ export function useImageGeneration() {
     setError(null);
     
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('generate-image', {
-        body: { prompt, category }
+      const response = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, category })
       });
 
-      if (fnError) {
-        console.error('Image generation function error:', fnError);
-        setError(fnError.message);
-        return null;
-      }
+      const data = await response.json();
 
-      if (data?.error || !data?.success) {
-        console.warn('Image generation returned error:', data?.error);
-        setError(data?.error || 'Failed to generate image');
+      if (!response.ok || data.error || !data.success) {
+        console.warn('Image generation returned error:', data.error);
+        setError(data.error || 'Failed to generate image');
         return null;
       }
 
@@ -56,7 +52,6 @@ export function useImageGeneration() {
         timestamp: data.timestamp
       };
 
-      // Cache the result
       cacheRef.current[cacheKey] = result;
       
       return result;
