@@ -1,0 +1,158 @@
+To implement the full-stack solution provided, you **do not** need Blender installed immediately.
+
+The code I wrote uses **Procedural Geometry** (generating red tubes and white planes via code). This acts as a "Whitebox" prototype, allowing you to test the **Physics, Audio, and Hand Tracking logic** instantly.
+
+However, to achieve the "Medical Grade" look (organic tissues, realistic textures) later, you **will** need Blender.
+
+Here is the exact checklist to get this running on your machine right now.
+
+### **Phase 1: The Engineering Setup (No Blender Required)**
+
+We will use **Vite** for a high-performance React 3D environment.
+
+1. **Initialize Project:**
+Open your terminal and run:
+```bash
+# 1. Create project
+npm create vite@latest neuro-endo-sim -- --template react-ts
+
+# 2. Enter folder
+cd neuro-endo-sim
+
+# 3. Install dependencies
+npm install three @types/three @react-three/fiber @react-three/drei zustand @mediapipe/tasks-vision
+
+```
+
+
+2. **Create File Structure:**
+Inside your `src/` folder, create the following structure to match the imports:
+```text
+src/
+├── anatomy.ts
+├── store.ts
+├── App.tsx
+├── engines/
+│   ├── audio.ts
+│   └── physics.ts
+└── components/
+    ├── SmartAnatomy.tsx   <-- (Paste the Hybrid Anatomy code here)
+    ├── HandInput.tsx      <-- (CREATE THIS, code below)
+
+```
+
+
+3. **The Missing Piece: `HandInput.tsx**`
+The previous code imported `HandTracker`, but didn't define it. Create `src/components/HandInput.tsx` and paste this code to connect your webcam:
+```tsx
+import { useEffect, useRef } from 'react';
+import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
+import { inputRefs } from '../store';
+
+export const HandTracker = () => {
+  const videoRef = useRef<HTMLVideoElement>(document.createElement('video'));
+
+  useEffect(() => {
+    let landmarker: any = null;
+    let animationId: number;
+
+    const startVision = async () => {
+      const vision = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
+      );
+
+      landmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+          delegate: "GPU"
+        },
+        runningMode: "VIDEO",
+        numHands: 2
+      });
+
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      videoRef.current.srcObject = stream;
+      videoRef.current.play();
+      predictLoop();
+    };
+
+    const predictLoop = () => {
+      if (videoRef.current && videoRef.current.readyState >= 2 && landmarker) {
+        const results = landmarker.detectForVideo(videoRef.current, performance.now());
+
+        if (results.landmarks) {
+          // Reset inputs if hands are lost
+          inputRefs.leftHand = { x: 0, y: 0, z: 0, rot: 0 };
+          inputRefs.rightHand = { x: 0, y: 0, z: 0, pinch: false };
+
+          results.landmarks.forEach((hand: any[], index: number) => {
+            const handedness = results.handedness[index].categories[0].displayName;
+            const wrist = hand[0];
+            const thumb = hand[4];
+            const indexTip = hand[8];
+
+            // 1. Calculate Pinch (Distance between Thumb & Index)
+            const pinchDist = Math.hypot(thumb.x - indexTip.x, thumb.y - indexTip.y);
+            const isPinching = pinchDist < 0.05; 
+
+            // 2. Normalize Coordinates (MediaPipe 0..1 -> Game -1..1)
+            const x = (1 - wrist.x - 0.5) * 2; // Invert X for mirror effect
+            const y = -(wrist.y - 0.5) * 2;    // Invert Y for 3D space
+            const z = wrist.z; 
+
+            // 3. Update Global Refs (Direct Memory Access)
+            if (handedness === 'Left') {
+               // Note: In Selfie Mode, 'Left' usually detects as your physical Right hand
+               // Adjust this logic based on your camera setup
+               inputRefs.rightHand = { x, y, z, pinch: isPinching };
+            } else {
+               inputRefs.leftHand = { x, y, z, rot: 0 }; 
+            }
+          });
+        }
+      }
+      animationId = requestAnimationFrame(predictLoop);
+    };
+
+    startVision();
+
+    return () => {
+      cancelAnimationFrame(animationId);
+      if(videoRef.current.srcObject) {
+        (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
+      }
+    };
+  }, []);
+
+  return null; // Headless component
+};
+
+```
+
+
+4. **Run It:**
+```bash
+npm run dev
+
+```
+
+
+You will see a schematic view. Use one hand to move the camera, and the other to move the tool. Pinch to activate the Doppler or Resection.
+
+---
+
+### **Phase 2: The Art Setup (When you are ready for Blender)**
+
+Once the logic is working, follow this workflow to replace the "Programmer Art" with realistic anatomy.
+
+1. **Model in Blender:**
+* Create the **Artery** (matches `ICA_LOGIC_PATH`) and the **Medial Wall** (matches the plane position).
+* **CRITICAL:** You must **UV Unwrap** the Medial Wall mesh. The resection shader uses UV coordinates to know where to paint the transparency hole. If you skip this, the wall won't disappear when you cut it.
+
+
+2. **Export:**
+* Export as `.glb` to your `public/models/` folder.
+
+
+3. **Update Code:**
+* In `SmartAnatomy.tsx`, replace the `<mesh>` and `<geometry>` tags with `useGLTF` hooks to load your realistic models.

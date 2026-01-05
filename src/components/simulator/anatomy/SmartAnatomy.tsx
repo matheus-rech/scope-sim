@@ -1,240 +1,128 @@
-import { Suspense, useEffect, useState } from 'react';
-import { useGLTF } from '@react-three/drei';
+import React, { useRef, useMemo } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import type { ToolType, MedialWallState } from '@/types/simulator';
-import { ProceduralAnatomy } from './ProceduralAnatomy';
-import { HighFidelityICA } from './HighFidelityICA';
-import { ShaderMedialWall } from './ShaderMedialWall';
+import { ICA_LOGIC_PATH } from '../anatomy';
+import { useGameStore, inputRefs } from '../store';
 
-// Asset paths - MUST match your Blender export filenames exactly
-const ASSET_PATHS = {
-  icaLeft: '/models/ICA_left.glb',
-  icaRight: '/models/ICA_right.glb',
-  medialWall: '/models/MedialWall.glb',
-  tumor: '/models/Tumor.glb',
-} as const;
+// --- SHADER: Organic Resection ---
+// This shader takes a texture map. White = Solid, Black = Hole.
+const WallShader = {
+  uniforms: {
+    uMap: { value: null }, // The Visual Texture (e.g., Dura Mater from Blender)
+    uAlphaMap: { value: null }, // The Dynamic Canvas we paint on
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D uMap;
+    uniform sampler2D uAlphaMap;
+    varying vec2 vUv;
+    void main() {
+      vec4 color = texture2D(uMap, vUv);
+      float alpha = texture2D(uAlphaMap, vUv).r; // Read Red channel
+      if (alpha < 0.1) discard; // Cut the hole
+      gl_FragColor = vec4(color.rgb, 1.0);
+    }
+  `
+};
 
-interface SmartAnatomyProps {
-  heartbeatPhase: number;
-  medialWall?: MedialWallState;
-  activeTool?: ToolType;
-  isToolActive?: boolean;
-  tumorRemoval?: number;
-  depth: number;
-}
+export const SmartAnatomy = ({ toolPos, audio }: any) => {
+  const icaMesh = useRef<THREE.Mesh>(null);
+  const { activeTool, addResectionProgress, addTrauma, setFeedback } = useGameStore();
 
-interface AssetAvailability {
-  icaLeft: boolean;
-  icaRight: boolean;
-  medialWall: boolean;
-  tumor: boolean;
-}
-
-/**
- * Checks which GLB assets exist in public/models/
- * This runs once on mount to detect available Blender assets.
- */
-function useAssetAvailability(): { checked: boolean; available: AssetAvailability } {
-  const [state, setState] = useState<{ checked: boolean; available: AssetAvailability }>({
-    checked: false,
-    available: { icaLeft: false, icaRight: false, medialWall: false, tumor: false },
-  });
-
-  useEffect(() => {
-    const checkAssets = async () => {
-      const checks: AssetAvailability = { icaLeft: false, icaRight: false, medialWall: false, tumor: false };
-      
-      await Promise.all(
-        (Object.keys(ASSET_PATHS) as Array<keyof typeof ASSET_PATHS>).map(async (key) => {
-          try {
-            const response = await fetch(ASSET_PATHS[key], { method: 'HEAD' });
-            checks[key] = response.ok;
-          } catch {
-            checks[key] = false;
-          }
-        })
-      );
-      
-      setState({ checked: true, available: checks });
-    };
-    checkAssets();
+  // 1. DYNAMIC CANVAS FOR RESECTION
+  // We paint on this invisible 2D canvas, then use it as a mask for the 3D wall
+  const [traumaCanvas, traumaCtx] = useMemo(() => {
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 256;
+    const ctx = c.getContext('2d')!;
+    ctx.fillStyle = 'white'; // White = Intact Wall
+    ctx.fillRect(0, 0, 256, 256);
+    return [c, ctx];
   }, []);
 
-  return state;
-}
+  const traumaTexture = useMemo(() => {
+    const t = new THREE.CanvasTexture(traumaCanvas);
+    return t;
+  }, [traumaCanvas]);
 
-/**
- * Component to load and render a GLB ICA model with shader
- */
-function GLBIca({ path, side, heartbeatPhase }: { path: string; side: 'left' | 'right'; heartbeatPhase: number }) {
-  const { scene } = useGLTF(path);
-  
-  // Clone the scene to avoid mutation issues
-  const model = scene.clone();
-  
-  return (
-    <HighFidelityICA
-      side={side}
-      heartbeatPhase={heartbeatPhase}
-      useGLB={true}
-      glbModel={model}
-    />
-  );
-}
+  useFrame(({ clock }) => {
+    // A. LOGIC: Doppler Audio
+    // We check against the INVISIBLE math curve, not the visual mesh
+    const isDoppler = activeTool === 'doppler' && inputRefs.rightHand.pinch;
+    const signal = audio.updateDoppler(toolPos, isDoppler);
+    if (signal > 0.8) setFeedback("Strong Signal: Anterior Genu Found", "success");
 
-/**
- * Component to load and render a GLB Medial Wall with resection shader
- */
-function GLBMedialWall({
-  path,
-  side,
-  isToolActive,
-  activeTool,
-}: {
-  path: string;
-  side: 'left' | 'right';
-  isToolActive?: boolean;
-  activeTool?: ToolType;
-}) {
-  const { scene } = useGLTF(path);
-  
-  // Find the mesh in the loaded scene
-  let wallMesh: THREE.Mesh | null = null;
-  scene.traverse((child) => {
-    if (child instanceof THREE.Mesh && !wallMesh) {
-      wallMesh = child.clone();
+    // B. LOGIC: Resection (Painting)
+    // If Dissector is active and pinching, we paint "Black" on the canvas
+    if (activeTool === 'dissector' && inputRefs.rightHand.pinch) {
+      // Map 3D Tool Position to 2D UV Space of the Wall Plane
+      // Wall is approx at Z = -10.5, Width=3, Height=3
+      const uvX = (toolPos.x + 1.5) / 3;
+      const uvY = (toolPos.y + 1.5) / 3;
+
+      if (uvX > 0 && uvX < 1 && uvY > 0 && uvY < 1) {
+         // Check Safety: Are we over the Artery?
+         // We check logic curve distance (Logic Layer)
+         const distToArtery = toolPos.distanceTo(ICA_LOGIC_PATH.getPointAt(0.5));
+
+         if (distToArtery < 0.4) {
+             addTrauma(2);
+             setFeedback("CRITICAL: CAROTID INJURY", "critical");
+         } else {
+             // Safe to Cut: Paint Hole
+             traumaCtx.globalCompositeOperation = 'destination-out';
+             traumaCtx.beginPath();
+             traumaCtx.arc(uvX * 256, uvY * 256, 15, 0, Math.PI * 2);
+             traumaCtx.fill();
+
+             // Update Texture
+             traumaTexture.needsUpdate = true; // Update 3D Texture
+             addResectionProgress(0.5);
+         }
+      }
+    }
+
+    // C. VISUALS: Pulsatile Animation
+    // The visual mesh pulses, while the logic curve stays static
+    if (icaMesh.current) {
+       const pulse = 1 + Math.sin(clock.elapsedTime * 10) * 0.03;
+       icaMesh.current.scale.set(pulse, pulse, 1);
     }
   });
-  
-  return (
-    <ShaderMedialWall
-      side={side}
-      isToolActive={isToolActive}
-      activeTool={activeTool}
-      glbModel={wallMesh}
-    />
-  );
-}
-
-/**
- * Component to load and render a GLB Tumor
- */
-function GLBTumor({ path, tumorRemoval }: { path: string; tumorRemoval: number }) {
-  const { scene } = useGLTF(path);
-  
-  // Scale based on removal progress
-  const scale = 1 - tumorRemoval;
-  
-  return (
-    <primitive 
-      object={scene.clone()} 
-      scale={[scale, scale, scale]}
-    />
-  );
-}
-
-/**
- * Smart anatomy component that renders the surgical field.
- * 
- * WIRING LOGIC:
- * 1. On mount, HEAD requests check if GLB files exist in public/models/
- * 2. If a GLB exists → useGLTF loads it and applies the appropriate shader
- * 3. If no GLB exists → procedural geometry is used as fallback
- * 
- * CRITICAL FOR BLENDER USERS:
- * - Export models to public/models/ with EXACT names: ICA_left.glb, ICA_right.glb, MedialWall.glb, Tumor.glb
- * - MedialWall MUST be UV unwrapped for the alpha-mask resection shader
- * - ICA models MUST align to ICA_PATH coordinates in ICAGeometry.ts (not centered at origin!)
- * - Scale: 1 Blender unit = 1 scene unit (approximately 1cm)
- */
-export function SmartAnatomy({
-  heartbeatPhase,
-  medialWall,
-  activeTool,
-  isToolActive,
-  tumorRemoval = 0,
-  depth,
-}: SmartAnatomyProps) {
-  const { checked, available } = useAssetAvailability();
-
-  // Don't render until we've checked for assets
-  if (!checked) {
-    return null;
-  }
 
   return (
-    <Suspense fallback={null}>
-      <group name="smart-anatomy">
-        {/* Background procedural structures (always procedural) */}
-        <ProceduralAnatomy
-          heartbeatPhase={heartbeatPhase}
-          medialWall={medialWall}
-          activeTool={activeTool}
-          isToolActive={isToolActive}
-          tumorRemoval={tumorRemoval}
-          depth={depth}
+    <group>
+      {/* 1. ARTERY VISUALS (Simulating Blender Mesh) */}
+      <mesh ref={icaMesh}>
+        {/* In a real app, useGLTF() here */}
+        <tubeGeometry args={[ICA_LOGIC_PATH, 64, 0.35, 16, false]} />
+        <meshStandardMaterial color="#990000" roughness={0.1} metalness={0.3} />
+      </mesh>
+
+      {/* 2. MEDIAL WALL VISUALS (Hybrid Shader) */}
+      <mesh position={[-0.5, 0, -10.5]}>
+        <planeGeometry args={[3, 3]} />
+        <shaderMaterial 
+          args={[WallShader]}
+          uniforms-uAlphaMap-value={traumaTexture}
+          // In real app, uMap would be useTexture('/assets/dura_texture.jpg')
+          uniforms-uMap-value={new THREE.TextureLoader().load('https://threejs.org/examples/textures/uv_grid_opengl.jpg')} 
+          transparent={true}
+          side={THREE.DoubleSide}
         />
+      </mesh>
 
-        {/* ICA Left: GLB if available, otherwise procedural with shader */}
-        {available.icaLeft ? (
-          <Suspense fallback={null}>
-            <GLBIca path={ASSET_PATHS.icaLeft} side="left" heartbeatPhase={heartbeatPhase} />
-          </Suspense>
-        ) : (
-          <HighFidelityICA side="left" heartbeatPhase={heartbeatPhase} />
-        )}
-
-        {/* ICA Right: GLB if available, otherwise procedural with shader */}
-        {available.icaRight ? (
-          <Suspense fallback={null}>
-            <GLBIca path={ASSET_PATHS.icaRight} side="right" heartbeatPhase={heartbeatPhase} />
-          </Suspense>
-        ) : (
-          <HighFidelityICA side="right" heartbeatPhase={heartbeatPhase} />
-        )}
-
-        {/* Medial Walls: GLB if available, otherwise procedural with resection shader */}
-        {/* Note: We use the same GLB for both walls, just mirror for right side */}
-        {available.medialWall ? (
-          <Suspense fallback={null}>
-            <GLBMedialWall
-              path={ASSET_PATHS.medialWall}
-              side="left"
-              isToolActive={isToolActive}
-              activeTool={activeTool}
-            />
-            {/* Right wall uses same model - ShaderMedialWall handles positioning */}
-            <GLBMedialWall
-              path={ASSET_PATHS.medialWall}
-              side="right"
-              isToolActive={isToolActive}
-              activeTool={activeTool}
-            />
-          </Suspense>
-        ) : (
-          <>
-            <ShaderMedialWall
-              side="left"
-              isToolActive={isToolActive}
-              activeTool={activeTool}
-            />
-            <ShaderMedialWall
-              side="right"
-              isToolActive={isToolActive}
-              activeTool={activeTool}
-            />
-          </>
-        )}
-
-        {/* Tumor: GLB if available (procedural tumor is in ProceduralAnatomy) */}
-        {available.tumor && (
-          <Suspense fallback={null}>
-            <GLBTumor path={ASSET_PATHS.tumor} tumorRemoval={tumorRemoval} />
-          </Suspense>
-        )}
-      </group>
-    </Suspense>
+      {/* 3. TUMOR (Behind Wall) */}
+      <mesh position={[-0.5, 0, -11.5]}>
+        <sphereGeometry args={[1.2, 32, 32]} />
+        <meshStandardMaterial color="#d8a6b8" roughness={0.8} />
+      </mesh>
+    </group>
   );
-}
-
-export default SmartAnatomy;
+};
