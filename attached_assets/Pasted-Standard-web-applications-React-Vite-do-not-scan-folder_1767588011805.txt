@@ -1,0 +1,92 @@
+Standard web applications (React/Vite) do not "scan" folders at runtime. If you drop a file named MedialWall.glb into a folder, the code remains unaware of it until you explicitly tell the SmartAnatomy component to load it.
+
+Here is the reality check and the exact steps to bridge the gap between "Programmer Art" and "Medical Grade" accuracy.
+
+1. The Lie: "Automatic Detection"
+
+If you look at your SmartAnatomy.tsx, it currently renders procedural geometry:
+
+TypeScript
+<mesh>
+  <tubeGeometry args={[ICA_LOGIC_PATH...]} />
+</mesh>
+This code will always render a red computer-generated tube. It will not magically switch to a Blender model.
+
+2. The Fix: You Must "Wire" the Assets
+
+To make the simulation work with Blender files, you must manually update SmartAnatomy.tsx to swap the procedural placeholders for the GLB loaders.
+
+Copy/Paste this into components/SmartAnatomy.tsx when you have the models:
+
+TypeScript
+import React, { useRef, useMemo } from 'react';
+import { useFrame } from '@react-three/fiber';
+import { useGLTF } from '@react-three/drei'; // <--- 1. The Loader
+import * as THREE from 'three';
+import { ICA_LOGIC_PATH } from '../anatomy';
+import { useGameStore, inputRefs } from '../store';
+
+// ... (Keep WallShader code here) ...
+
+export const SmartAnatomy = ({ toolPos, audio }: any) => {
+  // 2. LOAD THE ASSETS (Explicitly!)
+  // These paths must match your file names in /public/models/
+  const { nodes: wallNodes } = useGLTF('/models/MedialWall.glb') as any;
+  const { nodes: icaNodes } = useGLTF('/models/ICA_left.glb') as any; 
+  const { nodes: tumorNodes } = useGLTF('/models/Tumor.glb') as any;
+
+  const { activeTool, addResectionProgress, addTrauma, setFeedback } = useGameStore();
+  
+  // ... (Keep Canvas/Texture Logic) ...
+
+  useFrame(({ clock }) => {
+     // ... (Keep Physics/Audio Logic) ...
+  });
+
+  return (
+    <group>
+      {/* 3. REPLACE TUBE WITH BLENDER ARTERY */}
+      {/* We use the 'ICA' mesh from Blender but apply our own wet/organic material */}
+      <primitive object={icaNodes.ICA || icaNodes.Scene}>
+         <meshStandardMaterial color="#990000" roughness={0.2} metalness={0.4} />
+      </primitive>
+
+      {/* 4. REPLACE PLANE WITH BLENDER WALL (Crucial Step) */}
+      {/* We apply the Custom Shader to the GLB Geometry so it can be "cut" */}
+      <mesh geometry={wallNodes.MedialWall.geometry}>
+        <shaderMaterial 
+          args={[WallShader]}
+          uniforms-uAlphaMap-value={traumaTexture} // Connects logic to visual
+          // If your Blender model has a texture, use it here:
+          // uniforms-uMap-value={wallNodes.MedialWall.material.map}
+          transparent={true}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      {/* 5. TUMOR */}
+      <primitive object={tumorNodes.Tumor || tumorNodes.Scene} />
+    </group>
+  );
+};
+3. The "Anatomical Accuracy" Trap (Critical)
+
+Since you emphasized accuracy, here is the #1 mistake developers make when switching to Blender:
+
+The Coordinate Mismatch: Your anatomy.ts file defines the Carotid Artery path mathematically at roughly x: -1.2.
+
+The Blender Default: Artists usually model objects centered at x: 0 (Center of World).
+
+The Result: If you load a centered Blender model, the user will see the artery in the center of the screen, but the Doppler audio (which uses the math coordinates) will scream when they are 1.2cm to the left. The audio and visuals will be desynchronized.
+
+Solution: When exporting from Blender, you must not center the model. You must export it relative to the Sella Turcica origin (0,0,0) so it aligns perfectly with your ICA_LOGIC_PATH.
+
+Summary Checklist
+
+Trust the Architecture: The logic provided is solid.
+
+Ignore "Auto-Detect": Use the code above to manually wire the assets.
+
+Enforce Coordinates: Ensure your Blender export aligns with the coordinates in anatomy.ts.
+
+Check Naming: Ensure the mesh names inside Blender (MedialWall, ICA) match the code exactly.
