@@ -23,6 +23,8 @@ import { GuidedWalkthrough } from '@/components/orientation/GuidedWalkthrough';
 import { distanceToDangerLevel } from '@/lib/haptic/HapticFeedback';
 import { Button } from '@/components/ui/button';
 import { MedicalCard, MedicalCardIcon } from '@/components/ui/medical-card';
+import SurgicalHUD from '@/components/simulator/SurgicalHUD';
+import { VignetteEffect, DangerOverlay, BloomGlow } from '@/components/simulator/EnhancedSurgicalScene';
 import { LevelId, AttendingMessage, TumorScenario } from '@/types/simulator';
 import type { InterpolatedFrame } from '@/lib/replay/types';
 import { cn } from '@/lib/utils';
@@ -655,43 +657,47 @@ export default function Simulator() {
     <div className="h-screen bg-background flex overflow-hidden">
       {/* Main View Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <header className="h-14 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-4 flex-shrink-0 relative z-20">
-          <div className="flex items-center gap-4">
+        {/* Compact Header */}
+        <header className="h-10 bg-black/60 backdrop-blur-md border-b border-primary/20 flex items-center justify-between px-4 flex-shrink-0 relative z-20">
+          <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <Brain className="w-5 h-5 text-primary" />
-              <h1 className="text-sm font-bold text-foreground">
-                NeuroEndoSim
+              <Brain className="w-4 h-4 text-primary" />
+              <h1 className="text-xs font-bold text-primary tracking-wide">
+                NEUROENDOSIM
               </h1>
             </div>
-            <div className="h-4 w-px bg-border" />
-            <span className="text-xs text-muted-foreground font-medium">
-              Level {simulator.gameState.currentLevel} • {LEVEL_CONFIG[simulator.gameState.currentLevel]?.name}
-            </span>
+            <div className="h-3 w-px bg-primary/30" />
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+              <span className="text-[10px] text-success font-medium uppercase tracking-wider">
+                Live
+              </span>
+            </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {simulator.gameState.isPaused ? (
-              <Button size="sm" onClick={simulator.resumeGame} className="glow-primary">
+              <Button size="sm" onClick={simulator.resumeGame} className="h-7 text-xs px-3">
                 Resume
               </Button>
             ) : (
-              <Button size="sm" variant="outline" onClick={simulator.pauseGame}>
+              <Button size="sm" variant="ghost" onClick={simulator.pauseGame} className="h-7 text-xs px-3">
                 Pause
               </Button>
             )}
-            <Button size="sm" variant="ghost" onClick={simulator.resetGame}>
+            <Button size="sm" variant="ghost" onClick={simulator.resetGame} className="h-7 text-xs px-3">
               Reset
             </Button>
-            <Button size="sm" variant="secondary" onClick={handleLevelComplete}>
+            <Button size="sm" variant="outline" onClick={handleLevelComplete} className="h-7 text-xs px-3 border-primary/30 text-primary">
               End Level
             </Button>
           </div>
         </header>
 
         {/* Endoscopic View */}
-        <main className="flex-1 p-4 flex items-center justify-center min-h-0 relative">
-          <div className="w-full max-w-3xl aspect-square">
+        <main className="flex-1 p-2 flex items-center justify-center min-h-0 relative">
+          <div className="relative w-full max-w-4xl aspect-[4/3] rounded-lg overflow-hidden bg-black shadow-2xl border border-muted/20">
+            {/* Main Endoscopic View */}
             <EndoscopicView
               endoscopeState={simulator.gameState.endoscope}
               showBloodOverlay={simulator.gameState.levelState.metrics.bloodInField}
@@ -701,19 +707,42 @@ export default function Simulator() {
               activeTool={simulator.gameState.tool.activeTool}
               isToolActive={simulator.gameState.tool.isActive}
             />
+            
+            {/* Enhanced Visual Effects */}
+            <BloomGlow />
+            <VignetteEffect 
+              bloodLevel={simulator.gameState.bloodLevel} 
+              icaProximity={simulator.gameState.tool.dopplerState.nearestICADistance} 
+            />
+            <DangerOverlay 
+              icaProximity={simulator.gameState.tool.dopplerState.nearestICADistance} 
+            />
+            
+            {/* Surgical HUD Overlay */}
+            <SurgicalHUD
+              levelState={simulator.gameState.levelState}
+              vitals={simulator.gameState.vitals}
+              dopplerState={simulator.gameState.tool.dopplerState}
+              bloodLevel={simulator.gameState.bloodLevel}
+              timeElapsed={simulator.timeElapsed}
+              activeTool={simulator.gameState.tool.activeTool}
+              isToolActive={simulator.gameState.tool.isActive}
+              insertionDepth={simulator.gameState.endoscope.insertionDepth}
+              currentLevel={simulator.gameState.currentLevel}
+            />
+            
+            {/* ICA Mapping Overlay - appears when Doppler is active */}
+            {simulator.gameState.tool.activeTool === 'doppler' && (
+              <div className="absolute bottom-20 left-4 z-10">
+                <ICAMappingOverlay
+                  isActive={simulator.gameState.tool.isActive}
+                  probePosition={simulator.gameState.endoscope.tipPosition}
+                  signalIntensity={simulator.gameState.tool.dopplerState.signalStrength}
+                  dangerLevel={distanceToDangerLevel(simulator.gameState.tool.dopplerState.nearestICADistance)}
+                />
+              </div>
+            )}
           </div>
-          
-          {/* ICA Mapping Overlay - appears when Doppler is active */}
-          {simulator.gameState.tool.activeTool === 'doppler' && (
-            <div className="absolute bottom-8 left-8 z-10">
-              <ICAMappingOverlay
-                isActive={simulator.gameState.tool.isActive}
-                probePosition={simulator.gameState.endoscope.tipPosition}
-                signalIntensity={simulator.gameState.tool.dopplerState.signalStrength}
-                dangerLevel={distanceToDangerLevel(simulator.gameState.tool.dopplerState.nearestICADistance)}
-              />
-            </div>
-          )}
         </main>
 
         {/* Bottom Bar - Tools and Doppler */}

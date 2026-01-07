@@ -63,6 +63,17 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### Enhanced Simulator Visual Effects (January 2026)
+- Added SurgicalHUD overlay component displaying real-time metrics (vitals, ICA proximity, blood level, objectives, precision scores)
+- Created EnhancedSurgicalScene.tsx with visual effect components:
+  - `VignetteEffect`: Dynamic vignette based on blood level and ICA proximity
+  - `DangerOverlay`: Pulsing red border when ICA proximity is critical
+  - `BloomGlow`: Subtle center glow effect for depth
+  - Three.js materials and lighting utilities (EnhancedLighting, createTissueMaterial, PulsingICA)
+- Integrated HUD and visual effects into main Simulator view
+- Modernized header with compact professional styling
+- All ICA proximity fields use null guards (`?? 999`) for safe handling before Doppler activation
+
 ### AR Instrument Overlay System (January 2026)
 - Added real-time 3D surgical instrument overlays that track user's hands via webcam
 - Components in `src/components/ar/`:
