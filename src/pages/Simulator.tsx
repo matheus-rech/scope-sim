@@ -5,6 +5,7 @@ import { useAICoach } from '@/hooks/useAICoach';
 import { useReplaySystem } from '@/hooks/useReplaySystem';
 import EndoscopicView from '@/components/simulator/EndoscopicView';
 import HandTrackingPreview from '@/components/simulator/HandTrackingPreview';
+import { ARCompositeView } from '@/components/ar';
 import VitalsMonitor from '@/components/simulator/VitalsMonitor';
 import AttendingCoach from '@/components/simulator/AttendingCoach';
 import LevelInfoPanel from '@/components/simulator/LevelInfoPanel';
@@ -39,7 +40,8 @@ import {
   Camera,
   Film,
   X,
-  GraduationCap
+  GraduationCap,
+  Glasses
 } from 'lucide-react';
 
 const LEVEL_CONFIG: Record<number, { name: string }> = {
@@ -70,6 +72,9 @@ export default function Simulator() {
   const [isReplayMode, setIsReplayMode] = useState(false);
   const [currentReplayFrame, setCurrentReplayFrame] = useState<InterpolatedFrame | null>(null);
   const [showRecordingsList, setShowRecordingsList] = useState(false);
+  
+  // AR mode state
+  const [arModeEnabled, setArModeEnabled] = useState(false);
   
   // Replay system hook
   const replaySystem = useReplaySystem({
@@ -735,24 +740,48 @@ export default function Simulator() {
 
       {/* Right Sidebar */}
       <aside className="w-80 bg-gradient-to-b from-card to-card/80 border-l border-border flex flex-col min-h-0 flex-shrink-0">
-        {/* Hand Tracking Preview */}
+        {/* Hand Tracking Preview with AR Mode Toggle */}
         <div className="p-3 border-b border-border flex-shrink-0">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs text-muted-foreground">Hand View</span>
+            <Button
+              size="sm"
+              variant={arModeEnabled ? 'default' : 'ghost'}
+              onClick={() => setArModeEnabled(!arModeEnabled)}
+              className="gap-1 text-xs"
+              data-testid="button-toggle-ar-mode"
+            >
+              <Glasses className="h-3 w-3" />
+              {arModeEnabled ? 'AR On' : 'AR Off'}
+            </Button>
+          </div>
           <div className="aspect-[4/3]">
-            <HandTrackingPreview
-              videoRef={handTracking.videoRef}
-              canvasRef={handTracking.canvasRef}
-              isTracking={handTracking.isTracking}
-              isCalibrated={handTracking.isCalibrated}
-              gesture={handTracking.dominantGesture}
-              pinchStrength={handTracking.pinchStrength}
-              onCalibrate={handTracking.calibrate}
-              activeTool={simulator.gameState.tool.activeTool}
-              isToolActive={simulator.gameState.tool.isActive}
-              handPosition={handTracking.isTracking ? {
-                x: handTracking.dominantHand.palmCenter.x,
-                y: handTracking.dominantHand.palmCenter.y,
-              } : null}
-            />
+            {arModeEnabled ? (
+              <ARCompositeView
+                videoRef={handTracking.videoRef}
+                tool={simulator.gameState.tool.activeTool}
+                isActive={simulator.gameState.tool.isActive || handTracking.pinchStrength > 0.5}
+                isTracking={handTracking.isTracking}
+                showOverlay={true}
+                className="w-full h-full rounded-lg overflow-hidden"
+              />
+            ) : (
+              <HandTrackingPreview
+                videoRef={handTracking.videoRef}
+                canvasRef={handTracking.canvasRef}
+                isTracking={handTracking.isTracking}
+                isCalibrated={handTracking.isCalibrated}
+                gesture={handTracking.dominantGesture}
+                pinchStrength={handTracking.pinchStrength}
+                onCalibrate={handTracking.calibrate}
+                activeTool={simulator.gameState.tool.activeTool}
+                isToolActive={simulator.gameState.tool.isActive}
+                handPosition={handTracking.isTracking ? {
+                  x: handTracking.dominantHand.palmCenter.x,
+                  y: handTracking.dominantHand.palmCenter.y,
+                } : null}
+              />
+            )}
           </div>
         </div>
 
