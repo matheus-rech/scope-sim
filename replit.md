@@ -63,6 +63,18 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### AR Instrument Overlay System (January 2026)
+- Added real-time 3D surgical instrument overlays that track user's hands via webcam
+- Components in `src/components/ar/`:
+  - `InstrumentModels.tsx`: Procedural 3D geometry for endoscope, curette, dissector, doppler
+  - `InstrumentOverlay.tsx`: Hand tracking integration layer for instrument positioning
+  - `ARCompositeView.tsx`: Composite renderer layering 3D instruments over webcam feed
+- AR mode toggle button (Glasses icon) in simulator right sidebar
+- Uses `useFrame` from R3F for proper animation loop lifecycle
+- Instruments use smooth position/rotation interpolation (0.15-0.2 factors)
+- Grip animations respond to pinchStrength from hand tracking
+- Instruments scale 12-14x for visibility
+
 ### Migration Complete (January 2026)
 - Unified store: Combined `inputRefs` and `gameStore` into single `src/store.ts`
 - Created `src/anatomy.ts` with ICA paths and collision detection
