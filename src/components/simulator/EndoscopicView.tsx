@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState } from 'react';
+import { useRef, useMemo, useState, useEffect, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
@@ -512,14 +512,7 @@ function Scene({
       
       {/* Smart Anatomy: Shader-based ICA and Medial Walls */}
       {showSmartAnatomy && (
-        <SmartAnatomy
-          heartbeatPhase={heartbeatPhase}
-          medialWall={medialWall}
-          activeTool={activeTool}
-          isToolActive={isToolActive}
-          tumorRemoval={0}
-          depth={depth}
-        />
+        <SmartAnatomy />
       )}
       
       {/* Legacy sellar region for tumor/gland (when not using smart anatomy) */}
@@ -678,12 +671,36 @@ export default function EndoscopicView({
   activeTool,
   isToolActive,
 }: EndoscopicViewProps) {
+  const [canvasKey, setCanvasKey] = useState(0);
+  
+  const handleContextLost = useCallback((event: Event) => {
+    event.preventDefault();
+    console.warn('WebGL context lost, will restore...');
+  }, []);
+  
+  const handleContextRestored = useCallback(() => {
+    console.log('WebGL context restored');
+    setCanvasKey(k => k + 1);
+  }, []);
+  
   // Use bloodLevel for dynamic overlay, fallback to boolean
   const effectiveBloodLevel = bloodLevel > 0 ? bloodLevel : (showBloodOverlay ? 50 : 0);
   
   return (
     <div className="relative w-full h-full bg-scope-shadow rounded-full overflow-hidden">
-      <Canvas shadows>
+      <Canvas 
+        key={canvasKey}
+        shadows
+        gl={{ 
+          antialias: true,
+          powerPreference: 'high-performance',
+          failIfMajorPerformanceCaveat: false,
+        }}
+        onCreated={({ gl }) => {
+          gl.domElement.addEventListener('webglcontextlost', handleContextLost);
+          gl.domElement.addEventListener('webglcontextrestored', handleContextRestored);
+        }}
+      >
         <PerspectiveCamera makeDefault fov={90} near={0.1} far={100} />
         <Scene 
           endoscopeState={endoscopeState} 

@@ -123,7 +123,7 @@ export function ARCompositeView({
         style={{ transform: 'scaleX(-1)' }}
       />
       
-      {isVisible && (
+      {isVisible && isTracking && (
         <div 
           className="absolute inset-0 pointer-events-none z-20"
           style={{ transform: 'scaleX(-1)' }}
@@ -131,7 +131,12 @@ export function ARCompositeView({
           <Canvas
             key={canvasKey}
             camera={{ position: [0, 0, 1], fov: 50, near: 0.001, far: 100 }}
-            gl={{ alpha: true, antialias: true, preserveDrawingBuffer: true }}
+            gl={{ 
+              alpha: true, 
+              antialias: false,
+              powerPreference: 'low-power',
+              preserveDrawingBuffer: false,
+            }}
             style={{ background: 'transparent' }}
           >
             <ARScene tool={tool} isActive={isActive} />

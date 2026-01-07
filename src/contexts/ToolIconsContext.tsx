@@ -148,11 +148,10 @@ export function ToolIconsProvider({ children }: { children: React.ReactNode }) {
     return icons[tool] || defaultIconData;
   }, [icons]);
 
+  // Disabled automatic icon generation to prevent API errors and resource competition
+  // Icons will only be generated on-demand if user explicitly requests it
   useEffect(() => {
-    const uncachedTools = TOOL_TYPES.filter(tool => !icons[tool]?.imageUrl);
-    
-    if (uncachedTools.length > 0 && uncachedTools.length < TOOL_TYPES.length) {
-    }
+    // No automatic generation - prevents 401 errors and WebGL context issues
   }, []);
 
   return (
