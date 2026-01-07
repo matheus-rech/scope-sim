@@ -1,11 +1,15 @@
 import type { Express } from "express";
 import { storage } from "./storage";
 import { insertSimulationSessionSchema } from "@shared/schema";
+import { registerImageRoutes } from "./replit_integrations/image";
 
 const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 
 export function registerRoutes(app: Express) {
+  // Register Gemini image generation routes
+  registerImageRoutes(app);
+
   app.post("/api/vision-analysis", async (req, res) => {
     try {
       const { imageBase64, analysisType } = req.body;
